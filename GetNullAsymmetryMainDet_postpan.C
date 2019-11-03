@@ -1,4 +1,5 @@
 #include "lib/TaRunStats.cc"
+#include "lib/TaResult.cc"
 #include "LoadNormalizationMap.C"
 #include "lib/PlotPullFit.C"
 
@@ -42,12 +43,17 @@ void GetNullAsymmetryMainDet_postpan(){
   grand_tree->Draw(">>elist","error>0");
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
-  FILE *report = fopen("output/null-asym-maindet.log","w");
+  TaResult *fReport = new TaResult("output/null_asym_by_wien_maindet.log");
+  vector<TString> header{"IHWP,Wien","Mean","Error", "chi2/NDF"};
+  fReport->AddHeader(header);
+
   Int_t nWien = sizeof(in_cut)/sizeof(*in_cut);
   Double_t *grand_x = new Double_t[nWien];
   for(int iwien=0;iwien<nWien;iwien++){
-    fprintf(report,"%s,",wien_text[iwien].Data());
+
     //// IN
+    fReport->AddLine();
+    fReport->AddStringEntry("IN,"+wien_text[iwien]);
     Int_t npt = grand_tree->Draw(Form("%s.mean/ppb:error/ppb:slug",
 				      detector.Data()),
 				 in_cut[iwien].Data(),"goff");
@@ -68,8 +74,16 @@ void GetNullAsymmetryMainDet_postpan(){
       
     Ain_mean[iwien]=f1->GetParameter(0);
     Ain_error[iwien]=f1->GetParError(0);
+    fReport->AddFloatEntry(Ain_mean[iwien]);
+    fReport->AddFloatEntry(Ain_error[iwien]);
+    fReport->AddStringEntry(Form("%.1f/%d",
+				 f1->GetChisquare(),
+				 f1->GetNDF()));
 
     //// OUT
+    fReport->AddLine();
+    fReport->AddStringEntry("OUT,"+wien_text[iwien]);
+
     Int_t npt_out = grand_tree->Draw(Form("%s.mean/ppb:error/ppb:slug",
 					  detector.Data()),
 				     out_cut[iwien].Data(),"goff");
@@ -90,15 +104,22 @@ void GetNullAsymmetryMainDet_postpan(){
       
     Aout_mean[iwien]=f1out->GetParameter(0);
     Aout_error[iwien]=f1out->GetParError(0);
+    fReport->AddFloatEntry(Aout_mean[iwien]);
+    fReport->AddFloatEntry(Aout_error[iwien]);
+    fReport->AddStringEntry(Form("%.1f/%d",
+				 f1out->GetChisquare(),
+				 f1out->GetNDF()));
     //
     
     Anull_mean[iwien]=0.5*(Ain_mean[iwien]+Aout_mean[iwien]);
     Anull_error[iwien]= 0.5*(sqrt(pow(Ain_error[iwien],2)+pow(Aout_error[iwien],2)));
     grand_x[iwien]=iwien;
-    fprintf(report,"%.2f,%.2f\n",
-	    Anull_mean[iwien],
-	    Anull_error[iwien]);
-    
+    fReport->AddLine();
+    fReport->AddStringEntry("Null");
+    fReport->AddFloatEntry(Anull_mean[iwien]);
+    fReport->AddFloatEntry(Anull_error[iwien]);
+    fReport->AddStringEntry(" ");
+    fReport->InsertHorizontalLine();
   }
   gStyle->SetOptFit(1);
   TCanvas *c1 = new TCanvas("c1","c1",800,600);
@@ -123,13 +144,28 @@ void GetNullAsymmetryMainDet_postpan(){
   mgall->GetYaxis()->SetTitleSize(0.08);
   mgall->GetYaxis()->SetTitleOffset(1.0);
   mgall->SetTitle(";; Null Asymmetry (ppb)");
-  mgall->Fit("pol0");
+  TF1 *fpol0 = new TF1("fpol0","pol0",-1e3,1e3);
+  mgall->Fit("fpol0");
+
+  fReport->InsertHorizontalLine();
+  fReport->AddLine();
+  fReport->AddStringEntry("Average");
+  fReport->AddFloatEntry(fpol0->GetParameter(0));
+  fReport->AddFloatEntry(fpol0->GetParError(0));
+  
+  fReport->AddStringEntry(Form("%.1f/%d",
+			       fpol0->GetChisquare(),
+			       fpol0->GetNDF()));
+  fReport->InsertHorizontalLine();
+  
   gPad->SetBorderMode(0);
   gPad->SetLeftMargin(0.2);
   c1->SetGridx();
   c1->SetGridy();
   c1->SaveAs(Form("WienFit/%s_null_asym.pdf",detector.Data()));
   tsw.Print();
-  fclose(report);
+  
+  fReport->Print();
+  fReport->Close();
 }
 

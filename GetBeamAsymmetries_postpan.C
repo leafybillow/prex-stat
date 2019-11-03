@@ -83,12 +83,10 @@ void GetBeamAsymmetries_postpan(){
       }
       TString plot_title = Form("%s: %s",chname.Data(),legend_txt[iwien].Data());
       TF1 *f1 = PlotPullFit(y_val,y_error,x_val,plot_title);
-      // fprintf(report,"%.2f,",f1->GetParameter(0));
       fReport->AddFloatEntry(f1->GetParameter(0));
       double this_weight =1.0/pow(f1->GetParError(0),2);
       fBeamArray[ich] += this_weight*f1->GetParameter(0);
       if(ich==nDev-1){
-	// fprintf(report,"%.2f,",f1->GetParError(0));
 	total_weight += this_weight;
       }
 
@@ -99,7 +97,7 @@ void GetBeamAsymmetries_postpan(){
   fReport->AddStringEntry("Average");
   for(int ich=0;ich<nDev;ich++)
     fReport->AddFloatEntry(fBeamArray[ich]/total_weight);
-  //   fprintf(report,"%.2f,",fBeamArray[ich]/total_weight);
+ 
   fReport->InsertHorizontalLine();
   fReport->Print();
   fReport->Close();

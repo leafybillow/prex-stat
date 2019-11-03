@@ -1,18 +1,27 @@
-#include "TaAccumulator.cc"
-#include "TaRunStats.cc"
+#include "lib/TaAccumulator.cc"
+#include "lib/TaRunStats.cc"
 #include "LoadNormalizationMap.C"
-#include "PlotPullFit.C"
+#include "lib/PlotPullFit.C"
+#include "lib/TaResult.cc"
 
 void GetNullAsymmetryBeam_postpan(){
   TStopwatch tsw;
   
-  TString beam_array[]={"diff_bpm4aX/nm","diff_bpm4eX/nm",
-			"diff_bpm4aY/nm","diff_bpm4eY/nm",
-			"diff_bpmE/nm","Aq/ppb","cor_beam/ppb",
+  // TString beam_array[]={"diff_bpm4aX/nm","diff_bpm4eX/nm",
+  // 			"diff_bpm4aY/nm","diff_bpm4eY/nm",
+  // 			"diff_bpmE/nm","Aq/ppb","cor_beam/ppb",
+  // 			"cor_bpm4aX/ppb","cor_bpm4eX/ppb",
+  // 			"cor_bpm4aY/ppb","cor_bpm4eY/ppb",
+  // 			"cor_bpmE/ppb"};
+
+  TString beam_array[]={"Aq/ppb","cor_beam/ppb",
 			"cor_bpm4aX/ppb","cor_bpm4eX/ppb",
 			"cor_bpm4aY/ppb","cor_bpm4eY/ppb",
-			"cor_bpmE/ppb"};
-  
+			"cor_bpmE/ppb",
+			"diff_bpm4aX/nm","diff_bpm4eX/nm",
+			"diff_bpm4aY/nm","diff_bpm4eY/nm",
+			"diff_bpmE/nm"};
+
   Int_t nDev = sizeof(beam_array)/sizeof(*beam_array);
 
   TString detector="reg_asym_us_avg";
@@ -39,7 +48,7 @@ void GetNullAsymmetryBeam_postpan(){
   TString wien_text[]={"RIGHT","RIGHT","LEFT","LEFT",
 		     "RIGHT","RIGHT","LEFT","LEFT"};
 
-  TFile *inputRF = TFile::Open("prex_grand_postpan_fit.root");
+  TFile *inputRF = TFile::Open("rootfiles/prex_grand_average_postpan.root");
   TTree *grand_tree = (TTree*)inputRF->Get("grand");
   grand_tree->SetAlias("diff_bpmE","diff_bpm11X+diff_bpm12X");
   grand_tree->SetAlias("cor_bpmE","cor_bpm11X+cor_bpm12X");
@@ -47,18 +56,22 @@ void GetNullAsymmetryBeam_postpan(){
   grand_tree->Draw(">>elist","error>0");
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
-  FILE *report = fopen("NullAsymBeam.log","w");
-  fprintf(report,"\t\t");
-  for(int ich=0;ich<nDev;ich++)
-    fprintf(report,"%s,",beam_array[ich].Data());
-  fprintf(report,"\n");
+  
+  TaResult *fReport = new TaResult("output/null_asym_by_wien_beamline.log");
+  vector<TString> header{"IHWP,Wien",
+			 "AQ(ppb)","Abeam","A4aX","A4eX",
+			 "A4aY","A4eY","AE",
+			 "D4aX(nm)","D4eX","D4aY","D4eY","DXE"};
+  fReport->AddHeader(header);
 
   vector<Double_t> fBeamAnull(nDev);
   vector<Double_t> fBeamAnullError(nDev);
   Double_t total_weight;
   
   for(int iwien=0;iwien<8;iwien++){
-    fprintf(report,"%s,%s,",ihwp_text[iwien].Data(),wien_text[iwien].Data());
+    fReport->AddStringEntry(Form("%s,%s",
+				 ihwp_text[iwien].Data(),
+				 wien_text[iwien].Data()));
     TString chname;
     for(int ich=0;ich<nDev;ich++){
       chname=beam_array[ich];
@@ -79,9 +92,10 @@ void GetNullAsymmetryBeam_postpan(){
       }
       TString plot_title = Form("%s: %s",chname.Data(),legend_txt[iwien].Data());
       TF1 *f1 = PlotPullFit(y_val,y_error,x_val,plot_title);
-      fprintf(report,"%.2f,",f1->GetParameter(0));
+
+      fReport->AddFloatEntry(f1->GetParameter(0));
       if(ich==nDev-1)
-	fprintf(report,"\n");
+	fReport->AddLine();
 
       if(iwien%2==0){
 	fBeamAnull[ich]=0.5*f1->GetParameter(0);
@@ -93,14 +107,18 @@ void GetNullAsymmetryBeam_postpan(){
       }
     }
     if(iwien%2==1){
+      fReport->AddStringEntry("Null");
       for(int ich=0;ich<nDev;ich++){
-	fprintf(report,"%.2f,",fBeamAnull[ich]);
+	fReport->AddFloatEntry(fBeamAnull[ich]);
 	if(ich==nDev-1)
-	  fprintf(report,"\n");
+	  fReport->AddLine();
       }
+      fReport->InsertHorizontalLine();
     }
   }
-  fclose(report);
+  fReport->Print();
+  fReport->Close();
+
   tsw.Print();
 }
 

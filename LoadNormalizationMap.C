@@ -1,5 +1,5 @@
 std::map<Int_t,Int_t> LoadNormalizationMap(){
-  FILE* input = fopen("runlist/normalizing_bcm.txt","r");
+  FILE* input = fopen("normalizing_bcm.txt","r");
   std::map<Int_t,Int_t> fBCMRunMap;
   char bcm_name[256];
   while(!feof(input)){
