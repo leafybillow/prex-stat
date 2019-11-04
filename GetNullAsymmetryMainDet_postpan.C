@@ -5,7 +5,7 @@
 
 void GetNullAsymmetryMainDet_postpan(){
   TStopwatch tsw;
-  TString detector="reg_asym_us_avg";
+  TString detector="primary_det";
 
   TString in_cut[4]={"ihwp==1 && wien==1 && slug<=44",
 		     "ihwp==1 && wien==-1 && slug<=44 ",
@@ -40,7 +40,7 @@ void GetNullAsymmetryMainDet_postpan(){
   TFile *inputRF = TFile::Open("rootfiles/prex_grand_average_postpan.root");
   TTree *grand_tree = (TTree*)inputRF->Get("grand");
 
-  grand_tree->Draw(">>elist","error>0");
+  grand_tree->Draw(">>elist","primary_error>0");
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
   TaResult *fReport = new TaResult("output/null_asym_by_wien_maindet.log");
@@ -54,7 +54,7 @@ void GetNullAsymmetryMainDet_postpan(){
     //// IN
     fReport->AddLine();
     fReport->AddStringEntry("IN,"+wien_text[iwien]);
-    Int_t npt = grand_tree->Draw(Form("%s.mean/ppb:error/ppb:slug",
+    Int_t npt = grand_tree->Draw(Form("%s.mean/ppb:primary_error/ppb:slug",
 				      detector.Data()),
 				 in_cut[iwien].Data(),"goff");
     
@@ -84,7 +84,7 @@ void GetNullAsymmetryMainDet_postpan(){
     fReport->AddLine();
     fReport->AddStringEntry("OUT,"+wien_text[iwien]);
 
-    Int_t npt_out = grand_tree->Draw(Form("%s.mean/ppb:error/ppb:slug",
+    Int_t npt_out = grand_tree->Draw(Form("%s.mean/ppb:primary_error/ppb:slug",
 					  detector.Data()),
 				     out_cut[iwien].Data(),"goff");
     

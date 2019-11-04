@@ -45,7 +45,7 @@ void GetBeamAsymmetries_postpan(){
   grand_tree->SetAlias("diff_bpmE","diff_bpm11X+diff_bpm12X");
   grand_tree->SetAlias("cor_bpmE","cor_bpm11X+cor_bpm12X");
   grand_tree->SetAlias("cor_beam","cor_bpm4aX+cor_bpm4eX+cor_bpm4aY+cor_bpm4eY+cor_bpm11X+cor_bpm12X");
-  grand_tree->Draw(">>elist","error>0");
+  grand_tree->Draw(">>elist","primary_error>0");
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
   
@@ -66,7 +66,7 @@ void GetBeamAsymmetries_postpan(){
     TString chname;
     for(int ich=0;ich<nDev;ich++){
       chname=beam_array[ich];
-      Int_t npt = grand_tree->Draw(Form("spin*(%s):error/ppb:slug",
+      Int_t npt = grand_tree->Draw(Form("sign*(%s):primary_error/ppb:slug",
 					chname.Data()),
 				   spin_cut[iwien].Data(),"goff");
     

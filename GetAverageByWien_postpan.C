@@ -17,7 +17,7 @@ void GetAverageByWien_postpan(){
   
   Int_t nBPM = sizeof(bpm_array)/sizeof(*bpm_array);
   Int_t nBCM = sizeof(bcm_array)/sizeof(*bcm_array);
-  TString detector="reg_asym_us_avg";
+  TString detector="primary_det";
   
   TString spin_cut[8]={"ihwp==1 && wien==1 && slug<=44",
   		       "ihwp==-1 && wien==1 && slug<=44 ",
@@ -50,7 +50,7 @@ void GetAverageByWien_postpan(){
   TFile *inputRF = TFile::Open("rootfiles/prex_grand_average_postpan.root");
   TTree *grand_tree = (TTree*)inputRF->Get("grand");
 
-  grand_tree->Draw(">>elist","error>0");
+  grand_tree->Draw(">>elist","primary_error>0");
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
   TaResult *fReport = new TaResult("output/averages_by_wien_maindet.log");
@@ -66,7 +66,7 @@ void GetAverageByWien_postpan(){
 				 ihwp_text[iwien].Data(),
 				 wien_text[iwien].Data()));
 
-    Int_t npt = grand_tree->Draw(Form("spin*%s.mean/ppb:error/ppb:slug",
+    Int_t npt = grand_tree->Draw(Form("sign*%s.mean/ppb:primary_error/ppb:slug",
 				      detector.Data()),
 				 spin_cut[iwien].Data(),"goff");
     
