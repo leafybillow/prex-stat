@@ -58,7 +58,22 @@ void MakeSlugList(){
       slug_list << "Left-arm" << "\t";
     
     slug_list << ((*iter).second).first << "\t"
-	      << ((*iter).second).second << endl;
+	      << ((*iter).second).second << "\t";
+    Int_t sign;
+    if( ((*iter).second).first == "IN" )
+      sign = 1;
+    else if ( ((*iter).second).first == "OUT" )
+      sign =-1;
+
+    if( ((*iter).second).second == "FLIP-RIGHT" )
+      sign *= 1;
+    else if ( ((*iter).second).second == "FLIP-LEFT" )
+      sign *=-1;
+
+    if(sign==1)
+      slug_list << "+" << endl;
+    else if(sign==-1)
+      slug_list << "-" << endl;
     iter++;
   }
   slug_list.close();
