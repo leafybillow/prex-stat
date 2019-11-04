@@ -2,8 +2,14 @@
 #include "lib/TaResult.cc"
 #include "LoadNormalizationMap.C"
 #include "lib/PlotPullFit.C"
-
+void GetNullAsymmetryMainDet_postpan(Int_t arm_select);
 void GetNullAsymmetryMainDet_postpan(){
+  GetNullAsymmetryMainDet_postpan(-1);
+  GetNullAsymmetryMainDet_postpan(0);
+  GetNullAsymmetryMainDet_postpan(1);
+  GetNullAsymmetryMainDet_postpan(2);
+}
+void GetNullAsymmetryMainDet_postpan(Int_t arm_select){
   TStopwatch tsw;
   TString detector="primary_det";
 
@@ -39,11 +45,30 @@ void GetNullAsymmetryMainDet_postpan(){
 
   TFile *inputRF = TFile::Open("rootfiles/prex_grand_average_postpan.root");
   TTree *grand_tree = (TTree*)inputRF->Get("grand");
+  
+  TString arm_cut="";
+  TString output_label="";
+  if(arm_select==0){
+    arm_cut = "&&arm_flag==0";
+    output_label = "_both-arm";
+  }
+  if(arm_select==1){
+    arm_cut = "&&arm_flag==1";
+    output_label = "_right-arm";
+  }
+  if(arm_select==2){
+    arm_cut = "&&arm_flag==2";
+    output_label = "_left-arm";
+  }
+  grand_tree->Draw(">>elist","primary_error>0"+arm_cut);
 
-  grand_tree->Draw(">>elist","primary_error>0");
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
-  TaResult *fReport = new TaResult("output/null_asym_by_wien_maindet.log");
+
+  TString outlog_filename = Form("output/null_asym_by_wien_maindet%s.log",
+				 output_label.Data());
+  TaResult *fReport = new TaResult(outlog_filename);
+
   vector<TString> header{"IHWP,Wien","Mean","Error", "chi2/NDF"};
   fReport->AddHeader(header);
 

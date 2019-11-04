@@ -3,8 +3,15 @@
 #include "LoadNormalizationMap.C"
 #include "lib/PlotPullFit.C"
 #include "lib/TaResult.cc"
-
+void GetNullAsymmetryBeam_postpan(Int_t arm_select);
 void GetNullAsymmetryBeam_postpan(){
+  GetNullAsymmetryBeam_postpan(-1);
+  GetNullAsymmetryBeam_postpan(0);
+  GetNullAsymmetryBeam_postpan(1);
+  GetNullAsymmetryBeam_postpan(2);
+}
+
+void GetNullAsymmetryBeam_postpan(Int_t arm_select){
   TStopwatch tsw;
   
   // TString beam_array[]={"diff_bpm4aX/nm","diff_bpm4eX/nm",
@@ -53,20 +60,39 @@ void GetNullAsymmetryBeam_postpan(){
   grand_tree->SetAlias("diff_bpmE","diff_bpm11X+diff_bpm12X");
   grand_tree->SetAlias("cor_bpmE","cor_bpm11X+cor_bpm12X");
   grand_tree->SetAlias("cor_beam","cor_bpm4aX+cor_bpm4eX+cor_bpm4aY+cor_bpm4eY+cor_bpm11X+cor_bpm12X");
-  grand_tree->Draw(">>elist","primary_error>0");
+
+  TString arm_cut="";
+  TString output_label="";
+  if(arm_select==0){
+    arm_cut = "&&arm_flag==0";
+    output_label = "_both-arm";
+  }
+  if(arm_select==1){
+    arm_cut = "&&arm_flag==1";
+    output_label = "_right-arm";
+  }
+  if(arm_select==2){
+    arm_cut = "&&arm_flag==2";
+    output_label = "_left-arm";
+  }
+  grand_tree->Draw(">>elist","primary_error>0"+arm_cut);
+  
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
   
-  TaResult *fReport = new TaResult("output/null_asym_by_wien_beamline.log");
+  TString outlog_filename = Form("output/null_asym_by_wien_beamline%s.log",
+				 output_label.Data());
+  TaResult *fReport = new TaResult(outlog_filename);
+  
   vector<TString> header{"IHWP,Wien",
 			 "AQ(ppb)","Abeam","A4aX","A4eX",
 			 "A4aY","A4eY","AE",
 			 "D4aX(nm)","D4eX","D4aY","D4eY","DXE"};
   fReport->AddHeader(header);
 
-  vector<Double_t> fBeamAnull(nDev);
-  vector<Double_t> fBeamAnullError(nDev);
-  Double_t total_weight;
+  vector<Double_t> fBeamAnull(nDev,0.0);
+  vector<Double_t> fBeamAnullError(nDev,0.0);
+  Double_t total_weight =0.0;
   
   for(int iwien=0;iwien<8;iwien++){
     fReport->AddStringEntry(Form("%s,%s",

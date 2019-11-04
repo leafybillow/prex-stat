@@ -3,7 +3,15 @@
 #include "LoadNormalizationMap.C"
 #include "lib/PlotPullFit.C"
 #include "lib/TaResult.cc"
+void GetAverageByWien_postpan(Int_t arm_select);
 void GetAverageByWien_postpan(){
+  GetAverageByWien_postpan(-1);
+  GetAverageByWien_postpan(0);
+  GetAverageByWien_postpan(1);
+  GetAverageByWien_postpan(2);
+}
+
+void GetAverageByWien_postpan(Int_t arm_select){
   TStopwatch tsw;
   std::map<Int_t,Int_t> fBCMRunMap = LoadNormalizationMap();
   TString bcm_array[]={"asym_bcm_an_us","asym_bcm_an_ds",
@@ -50,10 +58,26 @@ void GetAverageByWien_postpan(){
   TFile *inputRF = TFile::Open("rootfiles/prex_grand_average_postpan.root");
   TTree *grand_tree = (TTree*)inputRF->Get("grand");
 
-  grand_tree->Draw(">>elist","primary_error>0");
+  TString arm_cut="";
+  TString output_label="";
+  if(arm_select==0){
+    arm_cut = "&&arm_flag==0";
+    output_label = "_both-arm";
+  }
+  if(arm_select==1){
+    arm_cut = "&&arm_flag==1";
+    output_label = "_right-arm";
+  }
+  if(arm_select==2){
+    arm_cut = "&&arm_flag==2";
+    output_label = "_left-arm";
+  }
+  grand_tree->Draw(">>elist","primary_error>0"+arm_cut);
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
-  TaResult *fReport = new TaResult("output/averages_by_wien_maindet.log");
+  TString outlog_filename = Form("output/averages_by_wien_maindet%s.log",
+				 output_label.Data());
+  TaResult *fReport = new TaResult(outlog_filename);
   vector<TString> header{"IHWP,Wien","Mean","Error", "chi2/NDF"};
   fReport->AddHeader(header);
   Int_t nWien = sizeof(spin_cut)/sizeof(*spin_cut);
@@ -123,7 +147,8 @@ void GetAverageByWien_postpan(){
   gPad->SetLeftMargin(0.2);
   c1->SetGridx();
   c1->SetGridy();
-  c1->SaveAs(Form("WienFit/%s_grand_average.pdf",detector.Data()));
+  c1->SaveAs(Form("WienFit/%s_grand_average%s.pdf",
+		  detector.Data(),output_label.Data()));
   tsw.Print();
   fReport->AddLine();
   fReport->InsertHorizontalLine();

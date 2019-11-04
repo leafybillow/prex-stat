@@ -3,8 +3,14 @@
 #include "LoadNormalizationMap.C"
 #include "lib/PlotPullFit.C"
 #include "lib/TaResult.cc"
-
+void GetBeamAsymmetries_postpan(Int_t arm_select);
 void GetBeamAsymmetries_postpan(){
+  GetBeamAsymmetries_postpan(-1);
+  GetBeamAsymmetries_postpan(0);
+  GetBeamAsymmetries_postpan(1);
+  GetBeamAsymmetries_postpan(2);
+}
+void GetBeamAsymmetries_postpan(Int_t arm_select){
   TStopwatch tsw;
   
   TString beam_array[]={"Aq/ppb","cor_beam/ppb",
@@ -45,19 +51,38 @@ void GetBeamAsymmetries_postpan(){
   grand_tree->SetAlias("diff_bpmE","diff_bpm11X+diff_bpm12X");
   grand_tree->SetAlias("cor_bpmE","cor_bpm11X+cor_bpm12X");
   grand_tree->SetAlias("cor_beam","cor_bpm4aX+cor_bpm4eX+cor_bpm4aY+cor_bpm4eY+cor_bpm11X+cor_bpm12X");
-  grand_tree->Draw(">>elist","primary_error>0");
+  
+  TString arm_cut="";
+  TString output_label="";
+  if(arm_select==0){
+    arm_cut = "&&arm_flag==0";
+    output_label = "_both-arm";
+  }
+  if(arm_select==1){
+    arm_cut = "&&arm_flag==1";
+    output_label = "_right-arm";
+  }
+  if(arm_select==2){
+    arm_cut = "&&arm_flag==2";
+    output_label = "_left-arm";
+  }
+  grand_tree->Draw(">>elist","primary_error>0"+arm_cut);
+
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
   
-  TaResult *fReport = new TaResult("output/averages_by_wien_beamline.log");
+  TString outlog_filename = Form("output/averages_by_wien_beamline%s.log",
+				 output_label.Data());
+  TaResult *fReport = new TaResult(outlog_filename);
+
   vector<TString> header{"IHWP,Wien",
 			 "AQ(ppb)","Abeam","A4aX","A4eX",
 			 "A4aY","A4eY","AE",
 			 "D4aX(nm)","D4eX","D4aY","D4eY","DXE"};
   fReport->AddHeader(header);
 
-  vector<Double_t> fBeamArray(nDev);
-  Double_t total_weight;
+  vector<Double_t> fBeamArray(nDev,0.0);
+  Double_t total_weight=0.0;
   for(int iwien=0;iwien<8;iwien++){
     fReport->AddLine();
     fReport->AddStringEntry(Form("%s,%s",
@@ -84,10 +109,15 @@ void GetBeamAsymmetries_postpan(){
       TString plot_title = Form("%s: %s",chname.Data(),legend_txt[iwien].Data());
       TF1 *f1 = PlotPullFit(y_val,y_error,x_val,plot_title);
       fReport->AddFloatEntry(f1->GetParameter(0));
-      double this_weight =1.0/pow(f1->GetParError(0),2);
+      double this_weight;
+      if(f1->GetParError(0)>0)
+	this_weight =1.0/pow(f1->GetParError(0),2);
+      else
+	this_weight = 0.0;
       fBeamArray[ich] += this_weight*f1->GetParameter(0);
       if(ich==nDev-1){
 	total_weight += this_weight;
+	// fReport->AddFloatEntry(f1->GetParError(0));
       }
 
     }
