@@ -49,7 +49,7 @@ void MakeSlugList(){
   while(iter!=fSlugMap.end()){
 
     slug_list << ((*iter).first).first << "\t" ;
-    
+    slug_list<<  ((*iter).first).second << "\t";
     if( ((*iter).first).second==0)
       slug_list << "Both-arm" << "\t";
     else if( ((*iter).first).second==1)

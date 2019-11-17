@@ -12,6 +12,7 @@ public:
   inline Int_t GetSlugNumber() const {return slug_number;};
   inline TString GetIHWPStatus() const {return ihwp;};
   inline TString GetWienMode() const {return wien;};
+  inline Int_t GetSign() const {return sign;};
 private:
   Int_t run_number;
   Int_t slug_number;
@@ -20,7 +21,7 @@ private:
   TString run_flag;
   TString ihwp;
   TString wien;
-
+  Int_t sign;
   ClassDef(TaRunInfo,0);
 };
 

@@ -8,6 +8,7 @@ TaRunInfo::TaRunInfo(){
   run_flag = "Unknown";
   ihwp = "Unknown";
   wien = "Unknown";
+  sign=0.0;
 }
 
 Bool_t TaRunInfo::ParseLine(TString sline){
@@ -31,5 +32,15 @@ Bool_t TaRunInfo::ParseLine(TString sline){
   if(run_config=="ALLminusR" || run_config=="CH_LHRS")
     arm_flag=2;
   
+  if( ihwp == "IN" )
+    sign = 1;
+  else if (ihwp == "OUT" )
+    sign =-1;
+
+  if( wien == "FLIP-RIGHT" )
+    sign *= 1;
+  else if ( wien == "FLIP-LEFT" )
+    sign *=-1;
+
   return kTRUE;
 }

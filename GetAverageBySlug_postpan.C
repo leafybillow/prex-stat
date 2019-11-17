@@ -1,6 +1,7 @@
 #include "lib/TaAccumulator.cc"
 #include "lib/TaRunInfo.cc"
 #include "LoadNormalizationMap.C"
+#include "LoadPittsMap.C"
 #include "lib/PlotPullFit.C"
 #include "lib/TaResult.cc"
 
@@ -36,12 +37,13 @@ void GetAverageBySlug_postpan(){
 			      "RECREATE");
   TTree* grand_tree = new TTree("grand","grand summary tree");
   grand_tree->SetMarkerStyle(20);
-  Int_t ihwp,wien,sign,arm_flag;
+  Int_t ihwp,wien,sign,arm_flag,pitt;
   Double_t slug;
   grand_tree->Branch("ihwp",&ihwp);
   grand_tree->Branch("wien",&wien);
   grand_tree->Branch("sign",&sign);
   grand_tree->Branch("slug",&slug);
+  grand_tree->Branch("pitt",&pitt);
   grand_tree->Branch("arm_flag",&arm_flag);
   
   Double_t Aq,fBeamCorrection;
@@ -77,6 +79,7 @@ void GetAverageBySlug_postpan(){
   parity_scale.nm=1e-6;
   grand_tree->Branch("unit",&parity_scale,"ppm/D:ppb:um:nm");
 
+  map<SLUG_ARM,Int_t> fPittMap = LoadPittsMap();
   map< pair<Int_t,Int_t>, vector<Int_t> > fSlugMap;
   map< Int_t, TaRunInfo > fRunInfoMap;  
   for(int islug=1;islug<=94;islug++){
@@ -323,6 +326,7 @@ void GetAverageBySlug_postpan(){
     else
       wien=0;
     sign = ihwp*wien;
+    pitt = fPittMap[make_pair(mySlug,myArmFlag)];
     grand_tree->Fill();
 
     iter_slug++;

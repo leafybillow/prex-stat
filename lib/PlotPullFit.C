@@ -1,5 +1,25 @@
 TF1* PlotPullFit(vector<Double_t> y_val, vector<Double_t> y_err,
 		 vector<Double_t> x_val,
+		 TString title);
+
+
+TF1* PlotPullFit(Double_t y_val[], Double_t y_err[],
+		 Double_t x_val[],Int_t npt,
+		 TString title){
+  vector<Double_t> y_vec(npt);
+  vector<Double_t> yerr_vec(npt);
+  vector<Double_t> x_vec(npt);
+  for(int i=0;i<npt;i++){
+    y_vec[i] = y_val[i];
+    yerr_vec[i] = y_err[i];
+    x_vec[i] = x_val[i];
+  }
+  
+  return PlotPullFit(y_vec,yerr_vec,x_vec,title);
+}
+
+TF1* PlotPullFit(vector<Double_t> y_val, vector<Double_t> y_err,
+		 vector<Double_t> x_val,
 		 TString title){
 
   Int_t npt = x_val.size();
