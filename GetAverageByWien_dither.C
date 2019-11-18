@@ -1,9 +1,18 @@
-#include "TaAccumulator.cc"
-#include "TaRunStats.cc"
+#include "lib/TaAccumulator.cc"
+#include "lib/TaRunStats.cc"
 #include "LoadNormalizationMap.C"
-#include "PlotPullFit.C"
-
+#include "lib/PlotPullFit.C"
+#include "lib/TaResult.cc"
+void GetAverageByWien_dither(Int_t arm_select);
 void GetAverageByWien_dither(){
+  GetAverageByWien_dither(-1);
+  GetAverageByWien_dither(0);
+  GetAverageByWien_dither(1);
+  GetAverageByWien_dither(2);
+}
+
+void GetAverageByWien_dither(Int_t arm_select){
+  TString slug_cut = "&& slug!=39 && slug!=72 && slug!=74";
   TStopwatch tsw;
   std::map<Int_t,Int_t> fBCMRunMap = LoadNormalizationMap();
   TString bcm_array[]={"asym_bcm_an_us","asym_bcm_an_ds",
@@ -17,11 +26,9 @@ void GetAverageByWien_dither(){
   
   Int_t nBPM = sizeof(bpm_array)/sizeof(*bpm_array);
   Int_t nBCM = sizeof(bcm_array)/sizeof(*bcm_array);
-  TString detector="dit_asym_us_avg";
-  // TString detector="diff_bpm4aX";
-  // TString raw_detector="asym_us_avg";
+  TString detector="primary_det";
   
-    TString spin_cut[8]={"ihwp==1 && wien==1 && slug<=44",
+  TString spin_cut[8]={"ihwp==1 && wien==1 && slug<=44",
   		       "ihwp==-1 && wien==1 && slug<=44 ",
   		       "ihwp==1&&wien==-1 && slug<=44",
   		       "ihwp==-1&&wien==-1 && slug<=44",
@@ -39,17 +46,6 @@ void GetAverageByWien_dither(){
   			 "IHWP In, Second Flip-Left",
   			 "IHWP Out, Second Flip-Left"};
   
-  // TString spin_cut[4]={"wien==1 && slug<=44",
-  // 		       "wien==-1 && slug<=44 ",
-  // 		       "wien==1 &&slug>44 ",
-  // 		       "wien==-1&& slug>44"};
-  
-  // TString legend_txt[4]={"Flip-Right",
-  // 			 "Flip-Left",
-  // 			 "Flip-Right",
-  // 			 "Flip-Left"};
-  // TString wien_text[]={"RIGHT","LEFT",
-  // 		       "RIGHT","LEFT"};
 
   TString ihwp_text[]={"IN","OUT","IN","OUT",
 		     "IN","OUT","IN","OUT"};
@@ -60,20 +56,42 @@ void GetAverageByWien_dither(){
 			 kGreen,kRed,kMagenta,kBlue };
   Int_t style_code[8]={20,21,22,23,20,21,22,23};
 
-  TFile *inputRF = TFile::Open("prex_dither_grand_fit.root");
+  TFile *inputRF = TFile::Open("rootfiles/prex_grand_average_dither.root");
   TTree *grand_tree = (TTree*)inputRF->Get("grand");
 
-  grand_tree->Draw(">>elist","error>0 && slug!=39 && slug!=72 && slug!=74");
+  TString arm_cut="";
+  TString output_label="";
+  if(arm_select==0){
+    arm_cut = "&&arm_flag==0";
+    output_label = "_both-arm";
+  }
+  if(arm_select==1){
+    arm_cut = "&&arm_flag==1";
+    output_label = "_right-arm";
+  }
+  if(arm_select==2){
+    arm_cut = "&&arm_flag==2";
+    output_label = "_left-arm";
+  }
+  grand_tree->Draw(">>elist","primary_error>0"+arm_cut+slug_cut);
   TEventList* elist = (TEventList*)gDirectory->FindObject("elist");
   grand_tree->SetEventList(elist);
-  FILE *report = fopen("report_dither.log","w");
+  TString outlog_filename = Form("output/averages_by_wien_maindet%s_dither.log",
+				 output_label.Data());
+  TaResult *fReport = new TaResult(outlog_filename);
+  vector<TString> header{"IHWP,Wien","Mean","Error", "chi2/NDF"};
+  fReport->AddHeader(header);
   Int_t nWien = sizeof(spin_cut)/sizeof(*spin_cut);
   Double_t *grand_y = new Double_t[nWien];
   Double_t *grand_yerr = new Double_t[nWien];
   Double_t *grand_x = new Double_t[nWien];
   for(int iwien=0;iwien<nWien;iwien++){
-    fprintf(report,"%s,%s,",ihwp_text[iwien].Data(),wien_text[iwien].Data());
-    Int_t npt = grand_tree->Draw(Form("spin*%s.mean/ppb:error/ppb:slug",
+    fReport->AddLine();
+    fReport->AddStringEntry(Form("%s,%s",
+				 ihwp_text[iwien].Data(),
+				 wien_text[iwien].Data()));
+
+    Int_t npt = grand_tree->Draw(Form("sign*%s.mean/ppb:primary_error/ppb:slug",
 				      detector.Data()),
 				 spin_cut[iwien].Data(),"goff");
     
@@ -90,29 +108,22 @@ void GetAverageByWien_dither(){
     }
     TString plot_title = Form("%s: %s",detector.Data(),legend_txt[iwien].Data());
     TF1 *f1 = PlotPullFit(y_val,y_error,x_val,plot_title);
-    fprintf(report,"%.2f,%.2f,%.2f/%d\n",
-	    f1->GetParameter(0),
-	    f1->GetParError(0),
-	    f1->GetChisquare(),
-	    f1->GetNDF());
+    fReport->AddFloatEntry(f1->GetParameter(0));
+    fReport->AddFloatEntry(f1->GetParError(0));
+    fReport->AddStringEntry(Form("%.1f/%d",
+				 f1->GetChisquare(),
+				 f1->GetNDF()));
+    fReport->AddLine();
     
     grand_y[iwien]=f1->GetParameter(0);
     grand_yerr[iwien]=f1->GetParError(0);
     grand_x[iwien]=iwien;
   }
   gStyle->SetOptFit(1);
-  TCanvas *c1 = new TCanvas("c1","c1",800,600);
+  TCanvas *c1 = new TCanvas("c1","c1",1000,700);
   c1->cd();
   TString plot_title = Form("%s:Grand Wien Fit",detector.Data());
-  // TGraphErrors *gone[nWien];
-  // TMultiGraph *mgall = new TMultiGraph();
   TGraphErrors *mgall = new TGraphErrors(nWien,grand_x,grand_y,0,grand_yerr);
-  // for(int i=0;i<nWien;i++){
-  //   gone[i] = new TGraphErrors(1,&grand_x[i],&grand_y[i],0,&grand_yerr[i]);
-  //   gone[i]->SetMarkerStyle(style_code[i]);
-  //   gone[i]->SetMarkerColor(color_code[i]);
-  //   mgall->Add(gone[i],"p");
-  // }
   mgall->SetMarkerStyle(20);
   mgall->SetMarkerSize(2);
   mgall->SetMarkerColor(kBlue);
@@ -122,8 +133,8 @@ void GetAverageByWien_dither(){
   hgall->GetXaxis()->Set(nWien,-0.5,nWien-0.5);
   for(int i=0;i<nWien;i++)
     hgall->GetXaxis()->SetBinLabel(i+1,ihwp_text[i]+", "+wien_text[i]);
-  
-  mgall->GetXaxis()->SetLabelSize(0.07);
+
+  mgall->GetXaxis()->SetLabelSize(0.05);
   double ymax  = mgall->GetYaxis()->GetXmax();
   double ymin = mgall->GetYaxis()->GetXmin();
   mgall->GetYaxis()->SetRangeUser(ymin,ymax+0.1*(ymax-ymin));
@@ -131,11 +142,25 @@ void GetAverageByWien_dither(){
   mgall->GetYaxis()->SetTitleSize(0.08);
   mgall->GetYaxis()->SetTitleOffset(1.0);
   mgall->SetTitle(";; Averages (ppb)");
-  mgall->Fit("pol0");
+  TF1 *f_avg = new TF1("f_avg","pol0",-10,10);
+  mgall->Fit("f_avg");
   gPad->SetBorderMode(0);
   gPad->SetLeftMargin(0.2);
   c1->SetGridx();
   c1->SetGridy();
+  c1->SaveAs(Form("WienFit/%s_grand_average%s.pdf",
+		  detector.Data(),output_label.Data()));
   tsw.Print();
+  fReport->AddLine();
+  fReport->InsertHorizontalLine();
+  fReport->AddStringEntry("Average");
+  fReport->AddFloatEntry(f_avg->GetParameter(0));
+  fReport->AddFloatEntry(f_avg->GetParError(0));
+  fReport->AddStringEntry(Form("%.1f/%d",
+			       f_avg->GetChisquare(),
+			       f_avg->GetNDF()));
+  fReport->InsertHorizontalLine();
+  fReport->Print();
+  fReport->Close();
 }
 
