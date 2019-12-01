@@ -1,4 +1,4 @@
-#include "lib/TaRunInfo.cc"
+#include "lib/TaRunInfo_v2.hh"
 
 map<Int_t, TaRunInfo> LoadRunInfoMap(){
   map< Int_t, TaRunInfo > fRunInfoMap;  
@@ -30,4 +30,5 @@ map<Int_t, TaRunInfo> LoadRunInfoMap(){
     }
     slug_info.close();
   }
+  return fRunInfoMap;
 }
