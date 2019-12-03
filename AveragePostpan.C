@@ -35,11 +35,13 @@ void AveragePostpan(){
   map<SLUG_ARM,Int_t> fPittMap = LoadPittsMap();
   map<SLUG_ARM,pair<TString,TString> > fSlugInfoMap;
   map<SLUG_ARM,Int_t > fSlugSignMap;
-  map<TString,StatData> fDetChannelMap;
-  map<TString,StatData> fRawDetChannelMap;
-  map<TString,StatData> fMonChannelMap;
-  map<TString,StatData> fBCMChannelMap;
-  StatData fAqStatData;
+
+  map<TString,StatData> fChannelMap;
+  vector<TString> fDeviceNameList;
+  fDeviceNameList.insert(fDeviceNameList.end(),fDetectorNameList.begin(),fDetectorNameList.end());
+  fDeviceNameList.insert(fDeviceNameList.end(),fRawDetectorNameList.begin(),fRawDetectorNameList.end());
+  fDeviceNameList.insert(fDeviceNameList.end(),fBPMNameList.begin(),fBPMNameList.end());
+  fDeviceNameList.insert(fDeviceNameList.end(),fBCMNameList.begin(),fBCMNameList.end());
   
   map<SLUG_ARM, TaStatBuilder > fSlugStatBuilderMap;
   map<Int_t, TaStatBuilder > fPittsStatBuilderMap;
@@ -61,10 +63,7 @@ void AveragePostpan(){
     Int_t run_number=0;
     Int_t last_run_number=0;
     mini_tree->SetBranchAddress("run",&run_number);
-    RegisterBranchesAddress(mini_tree,fBPMNameList,fMonChannelMap);
-    RegisterBranchesAddress(mini_tree,fRawDetectorNameList,fRawDetChannelMap);
-    RegisterBranchesAddress(mini_tree,fDetectorNameList,fDetChannelMap);
-    RegisterBranchesAddress(mini_tree,fBCMNameList,fBCMChannelMap);
+    RegisterBranchesAddress(mini_tree,fDeviceNameList,fChannelMap);
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
     TString detName, bcmName;
@@ -83,7 +82,7 @@ void AveragePostpan(){
 	if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
 	  cerr << "-- normalizing BCM info not found for run  "
 	       << run_number << endl;
-	  continue;
+	  continue;  // FIXME
 	}else
 	  bcmName = fBCMRunMap[run_number];
 	last_run_number = run_number;
@@ -96,8 +95,8 @@ void AveragePostpan(){
 	}
       }
       if(myRunInfo.GetRunFlag()=="Good"){
-	fSlugStatBuilderMap[myKey].UpdateMainDet(fDetChannelMap[detName]);
-	fSlugStatBuilderMap[myKey].UpdateChargeAsym(fBCMChannelMap[bcmName]);
+	fSlugStatBuilderMap[myKey].UpdateMainDet(fChannelMap[detName]);
+	// fSlugStatBuilderMap[myKey].UpdateChargeAsym(fBCMChannelMap[bcmName]);
       }
     } // end of run loop inside a slug
     input_file->Close();
@@ -110,6 +109,9 @@ void AveragePostpan(){
   TBranch *fBranchSlug = fSlugTree->Branch("slug",&fSlugID);
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
+  TaResult fSlugLog_md("average_by_slug_maindet.log");
+  vector<TString> header_slug{"Slug","Mean(ppb)","Error","chi2/ndf"};
+  fSlugLog_md.AddHeader(header_slug);
   auto iter_slug = fSlugStatBuilderMap.begin();
   while(iter_slug!=fSlugStatBuilderMap.end()){
     fSlugID = ((*iter_slug).first).first;
@@ -118,7 +120,10 @@ void AveragePostpan(){
     fSign = fSlugSignMap[(*iter_slug).first];
     ((*iter_slug).second).FillTree(fSlugTree);
     fSlugTree->Fill();
-
+    fSlugLog_md.AddLine();
+    fSlugLog_md.AddFloatEntry(fSlugID);
+    fSlugLog_md.AddFloatEntry(((*iter_slug).second).fWeightedAverageMap["Adet"].mean*1e9);
+    fSlugLog_md.AddFloatEntry(((*iter_slug).second).fWeightedAverageMap["Adet"].error*1e9);
     Int_t pittsID = fPittMap[(*iter_slug).first];
     if(pittsID!=-1){
       TString IHWP_status = (fSlugInfoMap[(*iter_slug).first]).first;
@@ -128,6 +133,9 @@ void AveragePostpan(){
     }
     iter_slug++;
   }
+  fSlugLog_md.InsertHorizontalLine();
+  fSlugLog_md.Print();
+  fSlugLog_md.Close();
   map<Int_t,TaStatBuilder> fPittsNullStatMap;
   TTree *fPittsTree = new TTree("pitt","Pitts Averages");
   Int_t fPittsID;
@@ -138,7 +146,7 @@ void AveragePostpan(){
     ((*iter_pitts).second).FillTree(fPittsTree);
     TaStatBuilder fNullStat =((*iter_pitts).second).GetNullStatBuilder();
     fPittsNullStatMap[fPittsID] = fNullStat;
-    fNullStat.FillTreeWithNullAverages(fPittsTree);
+    fNullStat.FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
     iter_pitts++;
   }
@@ -157,12 +165,12 @@ TF1* PullFitByPitts(map<Int_t,TaStatBuilder> fPittsStatBuilderMap, TString chnam
   auto iter = fPittsStatBuilderMap.begin();
   while(iter!=fPittsStatBuilderMap.end()){
     x_val.push_back((*iter).first);
-    y_val.push_back(((*iter).second).fMainDetectorAverage.mean*1e9);
-    y_err.push_back(((*iter).second).fMainDetectorAverage.error*1e9);
+    y_val.push_back(((*iter).second).fWeightedAverageMap["Adet"].mean*1e9);
+    y_err.push_back(((*iter).second).fWeightedAverageMap["Adet"].error*1e9);
     fRes.AddLine();
     fRes.AddFloatEntry((*iter).first);
-    fRes.AddFloatEntry(((*iter).second).fMainDetectorAverage.mean*1e9);
-    fRes.AddFloatEntry(((*iter).second).fMainDetectorAverage.error*1e9);
+    fRes.AddFloatEntry(((*iter).second).fWeightedAverageMap["Adet"].mean*1e9);
+    fRes.AddFloatEntry(((*iter).second).fWeightedAverageMap["Adet"].error*1e9);
     iter++;
   }
   fRes.InsertHorizontalLine();

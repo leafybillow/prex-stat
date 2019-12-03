@@ -31,7 +31,6 @@ public:
   TaStatBuilder();
   virtual ~TaStatBuilder(){};
 
-  void MergeStatBuilder(TaStatBuilder input);
   void UpdateStatBuilder(TaStatBuilder,Int_t sign=1);
   void UpdateStatBuilderByIHWP(TaStatBuilder,TString,Int_t sign=1);
   void Process();
@@ -41,7 +40,7 @@ public:
   void LoadRunInfo(TaRunInfo* aRunInfo);
 
   void UpdateMainDet(StatData);
-  void UpdateChargeAsym(StatData);
+  // void UpdateChargeAsym(StatData);
 
   void UpdateWeightedAverage(StatData &tgt,StatData input,Int_t sign=1);
   void UpdateLocalAverage(StatData &tgt,StatData input,Int_t sign=1);
@@ -49,16 +48,18 @@ public:
   StatData GetNullAverage(StatData in,StatData out);
   void UpdateStatDataByName(TString chname, StatData input,Int_t sign=1);
 
-  void FillTree(TTree *);
-  void FillTreeWithNullAverages(TTree *);
+  void FillTree(TTree *,TString prefix="");
   void ProcessNullAsym(TTree*);
 
-  StatData fMainDetectorAverage;
-  StatData fMainDetectorCentralMoment;
-
+  // StatData fMainDetectorAverage;
+  // StatData fMainDetectorCentralMoment;
+  map<TString,StatData> fWeightedAverageMap;
+  map<TString,StatData> fLocalAverageMap;
+  map<TString,StatData> fCentralMomentMap;
+  vector<TString> fDeviceNameList;
 private:
   TaRunInfo fCurrentRunInfo;
-  Double_t maindet_errorbar; 
+  Double_t weighting_errorbar; 
   Int_t fSign;
   
   StatData fChargeAsymWeightedAverage;
@@ -67,10 +68,6 @@ private:
   
   StatDataArray fMainDetectorByMini;  
   StatDataArray fChargeAsymByMini;
-  
-  map<TString,StatData> fWeightedAverageMap;
-  map<TString,StatData> fLocalAverageMap;
-  map<TString,StatData> fCentralMomentMap;
   
   map<TString, StatDataArray> fStatDataArrayMap;
   
