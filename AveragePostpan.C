@@ -38,13 +38,19 @@ void AveragePostpan(){
 
   map<TString,StatData> fChannelMap;
   vector<TString> fDeviceNameList;
-  fDeviceNameList.insert(fDeviceNameList.end(),fDetectorNameList.begin(),fDetectorNameList.end());
-  fDeviceNameList.insert(fDeviceNameList.end(),fRawDetectorNameList.begin(),fRawDetectorNameList.end());
-  fDeviceNameList.insert(fDeviceNameList.end(),fBPMNameList.begin(),fBPMNameList.end());
-  fDeviceNameList.insert(fDeviceNameList.end(),fBCMNameList.begin(),fBCMNameList.end());
+  
+  fDeviceNameList.insert(fDeviceNameList.end(),
+			 fDetectorNameList.begin(),fDetectorNameList.end());
+  fDeviceNameList.insert(fDeviceNameList.end(),
+			 fRawDetectorNameList.begin(),fRawDetectorNameList.end());
+  fDeviceNameList.insert(fDeviceNameList.end(),
+			 fBPMNameList.begin(),fBPMNameList.end());
+  fDeviceNameList.insert(fDeviceNameList.end(),
+			 fBCMNameList.begin(),fBCMNameList.end());
   
   map<SLUG_ARM, TaStatBuilder > fSlugStatBuilderMap;
   map<Int_t, TaStatBuilder > fPittsStatBuilderMap;
+  map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
     TString file_name = Form("./rootfiles/postpan/prexPrompt_slug%d.root",islug);
@@ -61,8 +67,10 @@ void AveragePostpan(){
     }
     Int_t nEntries = mini_tree->GetEntries();
     Int_t run_number=0;
+    Int_t mini_number=0;
     Int_t last_run_number=0;
     mini_tree->SetBranchAddress("run",&run_number);
+    mini_tree->SetBranchAddress("mini",&mini_number);
     RegisterBranchesAddress(mini_tree,fDeviceNameList,fChannelMap);
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
@@ -84,7 +92,7 @@ void AveragePostpan(){
 	       << run_number << endl;
 	  continue;  // FIXME
 	}else
-	  bcmName = fBCMRunMap[run_number];
+	  bcmName = "asym_"+fBCMRunMap[run_number];
 	last_run_number = run_number;
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder fStatBuilder;
@@ -93,12 +101,18 @@ void AveragePostpan(){
 					  myRunInfo.GetWienMode());
 	  fSlugSignMap[myKey] = myRunInfo.GetSign();
 	}
-      }
+      } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
+	fSlugStatBuilderMap[myKey].SetTmpTitle(Form("%d.%d",run_number,mini_number));
 	fSlugStatBuilderMap[myKey].UpdateMainDet(fChannelMap[detName]);
-	// fSlugStatBuilderMap[myKey].UpdateChargeAsym(fBCMChannelMap[bcmName]);
+	fSlugStatBuilderMap[myKey].UpdateStatDataByName("Aq",fChannelMap[bcmName]);
+	auto iter_dev = fDeviceNameList.begin();
+	while(iter_dev!=fDeviceNameList.end()){
+	  fSlugStatBuilderMap[myKey].UpdateStatDataByName(*iter_dev,fChannelMap[*iter_dev]);
+	  iter_dev++;
+	}
       }
-    } // end of run loop inside a slug
+    } // end of minirun loop inside a slug
     input_file->Close();
   }// end of slug loop
   TFile *output_rf =  TFile::Open("test.root","RECREATE");
@@ -113,29 +127,40 @@ void AveragePostpan(){
   vector<TString> header_slug{"Slug","Mean(ppb)","Error","chi2/ndf"};
   fSlugLog_md.AddHeader(header_slug);
   auto iter_slug = fSlugStatBuilderMap.begin();
+  Int_t wienID = -1;
+  TString last_wien_state="";
   while(iter_slug!=fSlugStatBuilderMap.end()){
     fSlugID = ((*iter_slug).first).first;
     fArmSlug = ((*iter_slug).first).second;
     fSlugID += fArmSlug/10.0;
     fSign = fSlugSignMap[(*iter_slug).first];
-    ((*iter_slug).second).FillTree(fSlugTree);
+    (*iter_slug).second.PullFitAllChannels();
+    (*iter_slug).second.FillTree(fSlugTree);
     fSlugTree->Fill();
     fSlugLog_md.AddLine();
     fSlugLog_md.AddFloatEntry(fSlugID);
     fSlugLog_md.AddFloatEntry(((*iter_slug).second).fWeightedAverageMap["Adet"].mean*1e9);
     fSlugLog_md.AddFloatEntry(((*iter_slug).second).fWeightedAverageMap["Adet"].error*1e9);
     Int_t pittsID = fPittMap[(*iter_slug).first];
-    if(pittsID!=-1){
-      TString IHWP_status = (fSlugInfoMap[(*iter_slug).first]).first;
+    TString IHWP_state = (fSlugInfoMap[(*iter_slug).first]).first;
+    TString Wien_state = (fSlugInfoMap[(*iter_slug).first]).second;
+    if(pittsID!=-1)
       fPittsStatBuilderMap[pittsID].UpdateStatBuilderByIHWP( (*iter_slug).second,
-							     IHWP_status,
+							     IHWP_state,
 							     fSign);
+    if(Wien_state!=last_wien_state){
+      wienID++;
+      last_wien_state = Wien_state;
     }
+    fWienStatBuilderMap[wienID].UpdateStatBuilderByIHWP( (*iter_slug).second,
+							 IHWP_state,
+							 fSign);
     iter_slug++;
   }
   fSlugLog_md.InsertHorizontalLine();
   fSlugLog_md.Print();
   fSlugLog_md.Close();
+  
   map<Int_t,TaStatBuilder> fPittsNullStatMap;
   TTree *fPittsTree = new TTree("pitt","Pitts Averages");
   Int_t fPittsID;
@@ -144,7 +169,7 @@ void AveragePostpan(){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     ((*iter_pitts).second).FillTree(fPittsTree);
-    TaStatBuilder fNullStat =((*iter_pitts).second).GetNullStatBuilder();
+    TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
     fPittsNullStatMap[fPittsID] = fNullStat;
     fNullStat.FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
@@ -152,6 +177,23 @@ void AveragePostpan(){
   }
   PullFitByPitts(fPittsStatBuilderMap,"AdetByPitts");
   PullFitByPitts(fPittsNullStatMap,"NullAdetByPitts");
+
+  map<Int_t,TaStatBuilder> fWienNullStateMap;
+  TTree *fWienTree = new TTree("wien","Wien Averages");
+  Int_t fWienID;
+  fWienTree->Branch("wien",&fWienID);
+  auto iter_wien = fWienStatBuilderMap.begin();
+  while(iter_wien!=fWienStatBuilderMap.end()){
+    fWienID = (*iter_wien).first;
+    (*iter_wien).second.FillTree(fWienTree);
+    TaStatBuilder fNullStat = (*iter_wien).second.GetNullStatBuilder();
+    fWienNullStateMap[fWienID] = fNullStat;
+    fNullStat.FillTree(fWienTree,"null_");
+    fWienTree->Fill();
+    iter_wien++;
+  }
+
+  fWienTree->Write();
   fPittsTree->Write();
   fSlugTree->Write();
   output_rf->Close();

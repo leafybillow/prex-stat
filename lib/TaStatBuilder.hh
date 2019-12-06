@@ -28,7 +28,7 @@ public:
 typedef vector<StatData> StatDataArray;
 class TaStatBuilder{
 public:
-  TaStatBuilder();
+  TaStatBuilder(){};
   virtual ~TaStatBuilder(){};
 
   void UpdateStatBuilder(TaStatBuilder,Int_t sign=1);
@@ -40,7 +40,6 @@ public:
   void LoadRunInfo(TaRunInfo* aRunInfo);
 
   void UpdateMainDet(StatData);
-  // void UpdateChargeAsym(StatData);
 
   void UpdateWeightedAverage(StatData &tgt,StatData input,Int_t sign=1);
   void UpdateLocalAverage(StatData &tgt,StatData input,Int_t sign=1);
@@ -48,29 +47,21 @@ public:
   StatData GetNullAverage(StatData in,StatData out);
   void UpdateStatDataByName(TString chname, StatData input,Int_t sign=1);
 
+  void PullFitAllChannels();
   void FillTree(TTree *,TString prefix="");
   void ProcessNullAsym(TTree*);
-
-  // StatData fMainDetectorAverage;
-  // StatData fMainDetectorCentralMoment;
+  void SetTmpTitle(TString input){ fTitle_tmp = input;};
   map<TString,StatData> fWeightedAverageMap;
   map<TString,StatData> fLocalAverageMap;
   map<TString,StatData> fCentralMomentMap;
   vector<TString> fDeviceNameList;
 private:
-  TaRunInfo fCurrentRunInfo;
   Double_t weighting_errorbar; 
   Int_t fSign;
   
-  StatData fChargeAsymWeightedAverage;
-  StatData fChargeAsymLocalAverage;
-  StatData fChargeAsymCentralMoment;
-  
-  StatDataArray fMainDetectorByMini;  
-  StatDataArray fChargeAsymByMini;
-  
   map<TString, StatDataArray> fStatDataArrayMap;
-  
+  vector<TString> fAxisTitle;
+  TString fTitle_tmp;
   vector<TString> fIVNameList;
   vector<TString> fDVNameList;
   map<TString,TaStatBuilder> fStatBuilderByIHWP;
