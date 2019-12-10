@@ -1,11 +1,11 @@
 TF1* PlotPullFit(vector<Double_t> y_val, vector<Double_t> y_err,
 		 vector<Double_t> x_val,
-		 TString title);
+		 TString title, TString outDir="./");
 
 
 TF1* PlotPullFit(Double_t y_val[], Double_t y_err[],
 		 Double_t x_val[],Int_t npt,
-		 TString title){
+		 TString title, TString outDir="./"){
   vector<Double_t> y_vec(npt);
   vector<Double_t> yerr_vec(npt);
   vector<Double_t> x_vec(npt);
@@ -15,12 +15,12 @@ TF1* PlotPullFit(Double_t y_val[], Double_t y_err[],
     x_vec[i] = x_val[i];
   }
   
-  return PlotPullFit(y_vec,yerr_vec,x_vec,title);
+  return PlotPullFit(y_vec,yerr_vec,x_vec,title,outDir);
 }
 
 TF1* PlotPullFit(vector<Double_t> y_val, vector<Double_t> y_err,
 		 vector<Double_t> x_val,
-		 TString title){
+		 TString title, TString outDir){
 
   Int_t npt = x_val.size();
   Double_t *x_array = new Double_t[npt];
@@ -104,7 +104,7 @@ TF1* PlotPullFit(vector<Double_t> y_val, vector<Double_t> y_err,
   title.ReplaceAll(':','_');
   title.ReplaceAll("/","_");
 
-  c1.SaveAs("/home/yetao/workarea/prex-statistics/SlugFit/"+title+".pdf");
+  c1.SaveAs(outDir+title+".pdf");
 
   return f1;
 }

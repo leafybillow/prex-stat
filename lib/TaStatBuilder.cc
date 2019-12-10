@@ -12,8 +12,8 @@ void TaStatBuilder::UpdateStatDataByName(TString chname,StatData input,Int_t sig
 
   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
     fDeviceNameList.push_back(chname);
-  
-  fStatDataArrayMap[chname].push_back(input);
+  if(input.error>0)
+    fStatDataArrayMap[chname].push_back(input);
   
   if(fWeightedAverageMap.find(chname)==fWeightedAverageMap.end())
     fWeightedAverageMap[chname].Zero();
@@ -108,7 +108,7 @@ StatData TaStatBuilder::GetNullAverage(StatData in, StatData out){
 
 void TaStatBuilder::FillTree(TTree *fTree, TString prefix){
 
-  TString leaflist = "mean/D:error:mean_local:error_local:mean_sum:error_sum:rms";
+  TString leaflist = "mean/D:error:mean_local:error_local:chi2:ndf:mean_sum:error_sum:rms";
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
     TString chname = *iter_dev;
@@ -119,6 +119,8 @@ void TaStatBuilder::FillTree(TTree *fTree, TString prefix){
     fBranch_ptr->GetLeaf("error")->SetAddress(&(fWeightedAverageMap[chname].error));
     fBranch_ptr->GetLeaf("mean_local")->SetAddress(&(fLocalAverageMap[chname].mean));
     fBranch_ptr->GetLeaf("error_local")->SetAddress(&(fLocalAverageMap[chname].error));
+    fBranch_ptr->GetLeaf("chi2")->SetAddress(&(fLocalAverageMap[chname].chi2));
+    fBranch_ptr->GetLeaf("ndf")->SetAddress(&(fLocalAverageMap[chname].ndf));
     fBranch_ptr->GetLeaf("mean_sum")->SetAddress(&(fCentralMomentMap[chname].mean));
     fBranch_ptr->GetLeaf("error_sum")->SetAddress(&(fCentralMomentMap[chname].error));
     fBranch_ptr->GetLeaf("rms")->SetAddress(&(fCentralMomentMap[chname].rms));
@@ -139,7 +141,8 @@ void TaStatBuilder::UpdateStatBuilder(TaStatBuilder finput ,Int_t sign){
   auto iter_dev = (finput.fDeviceNameList).begin();
   while(iter_dev != (finput.fDeviceNameList).end()){
     
-    if( find(fDeviceNameList.begin(),fDeviceNameList.end(),*iter_dev)==fDeviceNameList.end())
+    if( find(fDeviceNameList.begin(),fDeviceNameList.end(),
+	     *iter_dev)==fDeviceNameList.end())
       fDeviceNameList.push_back(*iter_dev);
     UpdateWeightedAverage(fWeightedAverageMap[*iter_dev],
 			  finput.fWeightedAverageMap[*iter_dev],sign);
@@ -176,7 +179,10 @@ void TaStatBuilder::ProcessNullAsym(TTree *fTree){
   fNullStatBuilder.FillTree(fTree,"null_");
 }
 
-void TaStatBuilder::PullFitAllChannels(){
+void TaStatBuilder::PullFitAllChannels(TString filename){
+  TCanvas c1("c1","c1",1100,600);
+  c1.cd();
+  c1.Print(filename+"[");
   auto iter_dev = fStatDataArrayMap.begin();
   while(iter_dev!=fStatDataArrayMap.end()){
     StatDataArray fStatDataArray  = (*iter_dev).second;
@@ -195,8 +201,6 @@ void TaStatBuilder::PullFitAllChannels(){
     gStyle->SetOptStat(0);
     gStyle->SetOptFit(1);
 
-    TCanvas c1("c1","c1",1100,600);
-    c1.cd();
     c1.Clear();
     TString title = (*iter_dev).first;
     double ySep = 0.3;
@@ -231,6 +235,8 @@ void TaStatBuilder::PullFitAllChannels(){
     tge->Fit("f1","Q");
     tge->SetTitle(title);
 
+    fLocalAverageMap[(*iter_dev).first].SetChi2NDF(f1->GetChisquare(),
+						   f1->GetNDF());
     Double_t fit_mean = f1->GetParameter(0);
     TH1F *htge = tge->GetHistogram();
     htge->GetXaxis()->Set(npt,-0.5,npt-0.5);
@@ -269,10 +275,10 @@ void TaStatBuilder::PullFitAllChannels(){
     hPull1D.DrawCopy();
     fg->Draw("same");
   
-    c1.SaveAs(title+"_test.pdf");
+    c1.Print(filename);
 
     iter_dev++;
   }
-
+  c1.Print(filename+"]");
 }
 

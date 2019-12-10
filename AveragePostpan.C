@@ -10,11 +10,11 @@ TF1* PullFitByPitts(map<Int_t,TaStatBuilder> fPittsStatBuilderMap, TString chnam
 
 void AveragePostpan(){
   vector<TString> fDetectorNameList{"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
-				    "reg_asym_us_dd",
+				    "reg_asym_us_dd","reg_asym_ds_avg",
 				    "reg_asym_left_dd","reg_asym_right_dd"};
   
   vector<TString> fRawDetectorNameList{"asym_us_avg","asym_usr","asym_usl",
-				       "asym_us_dd",
+				       "asym_us_dd","asym_ds_avg",
 				       "asym_left_dd","asym_right_dd"};
   
   vector<TString> fBPMNameList{"diff_bpm4aX","diff_bpm4eX",
@@ -115,6 +115,7 @@ void AveragePostpan(){
     } // end of minirun loop inside a slug
     input_file->Close();
   }// end of slug loop
+  
   TFile *output_rf =  TFile::Open("test.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
@@ -131,14 +132,19 @@ void AveragePostpan(){
   TString last_wien_state="";
   while(iter_slug!=fSlugStatBuilderMap.end()){
     fSlugID = ((*iter_slug).first).first;
+    TString slug_label = Form("%.0f",fSlugID);
     fArmSlug = ((*iter_slug).first).second;
     fSlugID += fArmSlug/10.0;
+    if(fArmSlug==1)
+      slug_label+="R";
+    else if(fArmSlug==2)
+      slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    (*iter_slug).second.PullFitAllChannels();
+    (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fSlugTree->Fill();
     fSlugLog_md.AddLine();
-    fSlugLog_md.AddFloatEntry(fSlugID);
+    fSlugLog_md.AddStringEntry(slug_label);
     fSlugLog_md.AddFloatEntry(((*iter_slug).second).fWeightedAverageMap["Adet"].mean*1e9);
     fSlugLog_md.AddFloatEntry(((*iter_slug).second).fWeightedAverageMap["Adet"].error*1e9);
     Int_t pittsID = fPittMap[(*iter_slug).first];
