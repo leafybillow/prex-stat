@@ -8,25 +8,45 @@ void TaStatBuilder::UpdateMainDet(StatData input){
   UpdateStatDataByName("Adet",input);
 }
 
-void TaStatBuilder::UpdateStatDataByName(TString chname,StatData input,Int_t sign){
+void TaStatBuilder::UpdateWeightingError(StatData input){
+  weighting_errorbar = input.error;
+}
 
+void TaStatBuilder::UpdateWeightedAverage(TString chname,StatData input, Int_t sign){
   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
     fDeviceNameList.push_back(chname);
   if(input.error>0)
     fStatDataArrayMap[chname].push_back(input);
-  
-  if(fWeightedAverageMap.find(chname)==fWeightedAverageMap.end())
-    fWeightedAverageMap[chname].Zero();
-  if(fLocalAverageMap.find(chname)==fLocalAverageMap.end())
-    fLocalAverageMap[chname].Zero();
-  if(fCentralMomentMap.find(chname)==fCentralMomentMap.end())
-    fCentralMomentMap[chname].Zero();
 
-  UpdateWeightedAverage(fWeightedAverageMap[chname],input,sign);
-  UpdateLocalAverage(fLocalAverageMap[chname],input,sign);
-  UpdateCentralMoment(fCentralMomentMap[chname],input,sign);
+  if(fAverageMap.find(chname)==fAverageMap.end())
+     fAverageMap[chname].Zero();
+  
+  UpdateWeightedAverage(fAverageMap[chname],input,sign);
 }
 
+void TaStatBuilder::UpdateLocalAverage(TString chname,StatData input, Int_t sign){
+  if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
+    fDeviceNameList.push_back(chname);
+  if(input.error>0)
+    fStatDataArrayMap[chname].push_back(input);
+
+  if(fAverageMap.find(chname)==fAverageMap.end())
+     fAverageMap[chname].Zero();
+  
+  UpdateLocalAverage(fAverageMap[chname],input,sign);
+}
+
+void TaStatBuilder::UpdateCentralMoment(TString chname,StatData input, Int_t sign){
+  if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
+    fDeviceNameList.push_back(chname);
+  if(input.error>0)
+    fStatDataArrayMap[chname].push_back(input);
+
+  if(fAverageMap.find(chname)==fAverageMap.end())
+     fAverageMap[chname].Zero();
+  
+  UpdateCentralMoment(fAverageMap[chname],input,sign);
+}
 
 void TaStatBuilder::UpdateWeightedAverage(StatData &target,
 					  StatData input,Int_t sign){
@@ -108,22 +128,18 @@ StatData TaStatBuilder::GetNullAverage(StatData in, StatData out){
 
 void TaStatBuilder::FillTree(TTree *fTree, TString prefix){
 
-  TString leaflist = "mean/D:error:mean_local:error_local:chi2:ndf:mean_sum:error_sum:rms";
+  TString leaflist = "mean/D:error:chi2:ndf:rms";
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
     TString chname = *iter_dev;
     TBranch *fBranch_ptr = fTree->GetBranch(prefix+chname);
     if(fBranch_ptr==NULL)
       fBranch_ptr = fTree->Branch(prefix+chname,0,leaflist);
-    fBranch_ptr->GetLeaf("mean")->SetAddress(&(fWeightedAverageMap[chname].mean));
-    fBranch_ptr->GetLeaf("error")->SetAddress(&(fWeightedAverageMap[chname].error));
-    fBranch_ptr->GetLeaf("mean_local")->SetAddress(&(fLocalAverageMap[chname].mean));
-    fBranch_ptr->GetLeaf("error_local")->SetAddress(&(fLocalAverageMap[chname].error));
-    fBranch_ptr->GetLeaf("chi2")->SetAddress(&(fLocalAverageMap[chname].chi2));
-    fBranch_ptr->GetLeaf("ndf")->SetAddress(&(fLocalAverageMap[chname].ndf));
-    fBranch_ptr->GetLeaf("mean_sum")->SetAddress(&(fCentralMomentMap[chname].mean));
-    fBranch_ptr->GetLeaf("error_sum")->SetAddress(&(fCentralMomentMap[chname].error));
-    fBranch_ptr->GetLeaf("rms")->SetAddress(&(fCentralMomentMap[chname].rms));
+    fBranch_ptr->GetLeaf("mean")->SetAddress(&(fAverageMap[chname].mean));
+    fBranch_ptr->GetLeaf("error")->SetAddress(&(fAverageMap[chname].error));
+    fBranch_ptr->GetLeaf("chi2")->SetAddress(&(fAverageMap[chname].chi2));
+    fBranch_ptr->GetLeaf("ndf")->SetAddress(&(fAverageMap[chname].ndf));
+    fBranch_ptr->GetLeaf("rms")->SetAddress(&(fAverageMap[chname].rms));
 
     iter_dev++;
   }
@@ -136,7 +152,7 @@ void TaStatBuilder::UpdateStatBuilderByIHWP(TaStatBuilder finput,
 }
 
 void TaStatBuilder::UpdateStatBuilder(TaStatBuilder finput ,Int_t sign){
-  weighting_errorbar = (finput.fWeightedAverageMap["Adet"]).error;
+  weighting_errorbar = (finput.fAverageMap["Adet"]).error;
   
   auto iter_dev = (finput.fDeviceNameList).begin();
   while(iter_dev != (finput.fDeviceNameList).end()){
@@ -144,12 +160,9 @@ void TaStatBuilder::UpdateStatBuilder(TaStatBuilder finput ,Int_t sign){
     if( find(fDeviceNameList.begin(),fDeviceNameList.end(),
 	     *iter_dev)==fDeviceNameList.end())
       fDeviceNameList.push_back(*iter_dev);
-    UpdateWeightedAverage(fWeightedAverageMap[*iter_dev],
-			  finput.fWeightedAverageMap[*iter_dev],sign);
+    
     UpdateLocalAverage(fLocalAverageMap[*iter_dev],
 		       finput.fLocalAverageMap[*iter_dev],sign);
-    UpdateCentralMoment(fCentralMomentMap[*iter_dev],
-			finput.fCentralMomentMap[*iter_dev],sign);
     iter_dev++;
   }
 }
@@ -165,10 +178,8 @@ TaStatBuilder TaStatBuilder::GetNullStatBuilder(){
 	    fNullStatBuilder.fDeviceNameList.end(),
 	    *iter_dev) == fNullStatBuilder.fDeviceNameList.end())
       fNullStatBuilder.fDeviceNameList.push_back(*iter_dev);
-	    
-    fNullStatBuilder.fWeightedAverageMap[*iter_dev] = GetNullAverage(inStatBuilder.fWeightedAverageMap[*iter_dev],outStatBuilder.fWeightedAverageMap[*iter_dev]);
-    fNullStatBuilder.fLocalAverageMap[*iter_dev] = GetNullAverage(inStatBuilder.fLocalAverageMap[*iter_dev],outStatBuilder.fLocalAverageMap[*iter_dev]);
-    fNullStatBuilder.fCentralMomentMap[*iter_dev] = GetNullAverage(inStatBuilder.fCentralMomentMap[*iter_dev],outStatBuilder.fCentralMomentMap[*iter_dev]);
+    // FIXME : should be aborted when channel map mismatched
+    fNullStatBuilder.fAverageMap[*iter_dev] = GetNullAverage(inStatBuilder.fAverageMap[*iter_dev],outStatBuilder.fAverageMap[*iter_dev]);
     iter_dev++;
   }
   return fNullStatBuilder;

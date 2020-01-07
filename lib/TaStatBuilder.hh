@@ -47,20 +47,25 @@ public:
   void LoadRunInfo(TaRunInfo* aRunInfo);
 
   void UpdateMainDet(StatData);
-
+  void UpdateWeightingError(StatData input);
+  
   void UpdateWeightedAverage(StatData &tgt,StatData input,Int_t sign=1);
   void UpdateLocalAverage(StatData &tgt,StatData input,Int_t sign=1);
-  void UpdateCentralMoment(StatData &tgt,StatData input,Int_t sign=1);
-  StatData GetNullAverage(StatData in,StatData out);
-  void UpdateStatDataByName(TString chname, StatData input,Int_t sign=1);
+  // void UpdateCentralMoment(StatData &tgt,StatData input,Int_t sign=1);
 
+  void UpdateWeightedAverage(TString chname,StatData input,Int_t sign=1);
+  void UpdateLocalAverage(TString chname,StatData input,Int_t sign=1);
+  // void UpdateCentralMoment(TString chname,StatData input,Int_t sign=1);
+  
+  StatData GetNullAverage(StatData in,StatData out);
+
+  
   void PullFitAllChannels(TString filename);
   void FillTree(TTree *,TString prefix="");
   void ProcessNullAsym(TTree*);
   void SetTmpTitle(TString input){ fTitle_tmp = input;};
-  map<TString,StatData> fWeightedAverageMap;
-  map<TString,StatData> fLocalAverageMap;
-  map<TString,StatData> fCentralMomentMap;
+  map<TString,StatData> fAverageMap;
+  
   vector<TString> fDeviceNameList;
 private:
   Double_t weighting_errorbar; 
