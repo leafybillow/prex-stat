@@ -13,6 +13,8 @@ public:
   Double_t chi2;
   Double_t ndf;
   
+  TString tag;
+  
   void Zero(){
     mean =0.0;
     error =0.0;
@@ -32,10 +34,12 @@ public:
   
   ClassDef(StatData,0);
 };
+
 typedef vector<StatData> StatDataArray;
+
 class TaStatBuilder{
 public:
-  TaStatBuilder(){};
+  TaStatBuilder();
   virtual ~TaStatBuilder(){};
 
   void UpdateStatBuilder(TaStatBuilder,Int_t sign=1);
@@ -45,20 +49,16 @@ public:
   TaStatBuilder GetNullStatBuilder();
   
   void LoadRunInfo(TaRunInfo* aRunInfo);
-
-  void UpdateMainDet(StatData);
   void UpdateWeightingError(StatData input);
+  void UpdateMainDet(StatData input);
   
-  void UpdateWeightedAverage(StatData &tgt,StatData input,Int_t sign=1);
-  void UpdateLocalAverage(StatData &tgt,StatData input,Int_t sign=1);
+  void UpdateStatData(StatData &tgt,StatData input,Int_t sign=1);
+  void UpdateStatData(TString chname,StatData input,Int_t sign=1);
+  
   // void UpdateCentralMoment(StatData &tgt,StatData input,Int_t sign=1);
-
-  void UpdateWeightedAverage(TString chname,StatData input,Int_t sign=1);
-  void UpdateLocalAverage(TString chname,StatData input,Int_t sign=1);
   // void UpdateCentralMoment(TString chname,StatData input,Int_t sign=1);
   
-  StatData GetNullAverage(StatData in,StatData out);
-
+  StatData GetNullAverage(StatData in1,StatData in2);
   
   void PullFitAllChannels(TString filename);
   void FillTree(TTree *,TString prefix="");
@@ -68,7 +68,8 @@ public:
   
   vector<TString> fDeviceNameList;
 private:
-  Double_t weighting_errorbar; 
+  Double_t weighting_errorbar;
+  Bool_t kUseWeight;
   Int_t fSign;
   
   map<TString, StatDataArray> fStatDataArrayMap;

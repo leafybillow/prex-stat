@@ -37,6 +37,7 @@ public:
   virtual ~TaResult(){};
   void AddStringEntry(TString finput){ this_row.AddEntry(finput);};
   void AddFloatEntry(Double_t finput);
+  void AddChi2NDF(Double_t chi2, Double_t ndf);
   void AddHeader(vector<TString> input);
   void InsertHorizontalLine();
   void AddLine();

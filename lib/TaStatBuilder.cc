@@ -1,134 +1,119 @@
 #include "TaStatBuilder.hh"
 ClassImp(TaStatBuilder)
 
+TaStatBuilder::TaStatBuilder(){
+  weighting_errorbar  = -1.0;
+  kUseWeight = kFALSE;
+}
+
 void TaStatBuilder::UpdateMainDet(StatData input){
   weighting_errorbar = input.error;
   if(input.error>0.0)
     fAxisTitle.push_back(fTitle_tmp);
-  UpdateStatDataByName("Adet",input);
+  UpdateStatData("Adet",input);
 }
 
 void TaStatBuilder::UpdateWeightingError(StatData input){
+  kUseWeight = kTRUE;
   weighting_errorbar = input.error;
 }
 
-void TaStatBuilder::UpdateWeightedAverage(TString chname,StatData input, Int_t sign){
+void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
+  
   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
     fDeviceNameList.push_back(chname);
-  if(input.error>0)
-    fStatDataArrayMap[chname].push_back(input);
+  
+  // if(input.error>0)
+  fStatDataArrayMap[chname].push_back(input);
 
   if(fAverageMap.find(chname)==fAverageMap.end())
-     fAverageMap[chname].Zero();
-  
-  UpdateWeightedAverage(fAverageMap[chname],input,sign);
+    fAverageMap[chname].Zero();
+
+  UpdateStatData(fAverageMap[chname],input,sign);
 }
 
-void TaStatBuilder::UpdateLocalAverage(TString chname,StatData input, Int_t sign){
-  if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
-    fDeviceNameList.push_back(chname);
-  if(input.error>0)
-    fStatDataArrayMap[chname].push_back(input);
-
-  if(fAverageMap.find(chname)==fAverageMap.end())
-     fAverageMap[chname].Zero();
-  
-  UpdateLocalAverage(fAverageMap[chname],input,sign);
-}
-
-void TaStatBuilder::UpdateCentralMoment(TString chname,StatData input, Int_t sign){
-  if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
-    fDeviceNameList.push_back(chname);
-  if(input.error>0)
-    fStatDataArrayMap[chname].push_back(input);
-
-  if(fAverageMap.find(chname)==fAverageMap.end())
-     fAverageMap[chname].Zero();
-  
-  UpdateCentralMoment(fAverageMap[chname],input,sign);
-}
-
-void TaStatBuilder::UpdateWeightedAverage(StatData &target,
-					  StatData input,Int_t sign){
-  if(input.error<=0)
-    return;
-  
-  if(target.error==0){
-    target.mean = sign*input.mean;
-    target.error = weighting_errorbar;
-  }else{
-    Double_t mean1= target.mean;
-    Double_t weight1= pow(target.error,-2);
-    Double_t mean2 = sign*input.mean;
-    Double_t weight2 = pow(weighting_errorbar,-2);
-    Double_t weight_sum = weight1+weight2;
-    target.mean = (mean1*weight1 + mean2*weight2)/weight_sum;
-    target.error =  sqrt(1.0/weight_sum);
-  }
-}
-
-void TaStatBuilder::UpdateLocalAverage(StatData &dest,
-				       StatData input,Int_t sign){
+void TaStatBuilder::UpdateStatData(StatData &dest,
+				   StatData input,Int_t sign){
   if(input.error<=0)
     return;
 
   if(dest.error==0){
     dest.mean = sign*input.mean;
-    dest.error = input.error;
-    // no point to do rms calculation
+    if(kUseWeight)
+      dest.error = weighting_errorbar;
+    else
+      dest.error = input.error;
   }else{
     Double_t mean1= dest.mean;
     Double_t weight1= pow(dest.error,-2);
     Double_t mean2 = sign*input.mean;
-    Double_t weight2 = pow(input.error,-2);
+    Double_t weight2;
+    if(kUseWeight)
+      weight2 = pow(weighting_errorbar,-2);
+    else
+      weight2 = pow(input.error,-2);
+    
     Double_t weight_sum = weight1+weight2;
     dest.mean = (mean1*weight1 + mean2*weight2)/weight_sum;
     dest.error =  sqrt(1.0/weight_sum);
   }
 }
 
-void TaStatBuilder::UpdateCentralMoment(StatData &dest,
-					StatData input,Int_t sign){
-  if(input.error<=0)
-    return;
 
-  Double_t mean2 = sign*input.mean;
-  Double_t error2 = input.error;
-  Double_t rms2 = input.rms;
+// void TaStatBuilder::UpdateCentralMoment(TString chname,StatData input, Int_t sign){
+//   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
+//     fDeviceNameList.push_back(chname);
+//   if(input.error>0)
+//     fStatDataArrayMap[chname].push_back(input);
+
+//   if(fAverageMap.find(chname)==fAverageMap.end())
+//      fAverageMap[chname].Zero();
   
-  Double_t nsamples2 = 0.0;
-  if(error2!=0)
-    nsamples2= pow(rms2/error2,2);
-  Double_t M2_2 = pow(rms2,2)*nsamples2;
+//   UpdateCentralMoment(fAverageMap[chname],input,sign);
+// }
 
-  if(nsamples2!=0){
-    Double_t mean1 = dest.mean;
-    Double_t error1 = dest.error;
-    Double_t rms1 = dest.rms;
-    Double_t nsamples1=0.0;
-    if(error1!=0)
-      nsamples1 = pow(rms1/error1,2);
-    Double_t M2_1 = pow(rms1,2)*nsamples1;
-    Double_t delta_mean = mean2-mean1;
-    M2_1 += M2_2;
-    M2_1 += nsamples1*nsamples2*pow(delta_mean,2)/(nsamples1+nsamples2);
-    dest.mean += nsamples2*delta_mean/(nsamples1+nsamples2);
-    nsamples1+=nsamples2;
-    dest.rms = sqrt(M2_1/nsamples1);
-    dest.error = dest.rms/sqrt(nsamples1);
-  }
-}
+// void TaStatBuilder::UpdateCentralMoment(StatData &dest,
+// 					StatData input,Int_t sign){
+//   if(input.error<=0)
+//     return;
 
-StatData TaStatBuilder::GetNullAverage(StatData in, StatData out){
+//   Double_t mean2 = sign*input.mean;
+//   Double_t error2 = input.error;
+//   Double_t rms2 = input.rms;
+  
+//   Double_t nsamples2 = 0.0;
+//   if(error2!=0)
+//     nsamples2= pow(rms2/error2,2);
+//   Double_t M2_2 = pow(rms2,2)*nsamples2;
+
+//   if(nsamples2!=0){
+//     Double_t mean1 = dest.mean;
+//     Double_t error1 = dest.error;
+//     Double_t rms1 = dest.rms;
+//     Double_t nsamples1=0.0;
+//     if(error1!=0)
+//       nsamples1 = pow(rms1/error1,2);
+//     Double_t M2_1 = pow(rms1,2)*nsamples1;
+//     Double_t delta_mean = mean2-mean1;
+//     M2_1 += M2_2;
+//     M2_1 += nsamples1*nsamples2*pow(delta_mean,2)/(nsamples1+nsamples2);
+//     dest.mean += nsamples2*delta_mean/(nsamples1+nsamples2);
+//     nsamples1+=nsamples2;
+//     dest.rms = sqrt(M2_1/nsamples1);
+//     dest.error = dest.rms/sqrt(nsamples1);
+//   }
+// }
+
+StatData TaStatBuilder::GetNullAverage(StatData in1, StatData in2){
   StatData fRetStatData;
-  fRetStatData.mean = (in.mean + out.mean)/2.0;
-  fRetStatData.error = sqrt(in.error*in.error+out.error*out.error)/2.0;
+  fRetStatData.mean = (in1.mean + in2.mean)/2.0;
+  fRetStatData.error = sqrt(in1.error*in1.error+in2.error*in2.error)/2.0;
   return fRetStatData;
 }
 
 void TaStatBuilder::FillTree(TTree *fTree, TString prefix){
 
-  TString leaflist = "mean/D:error:chi2:ndf:rms";
+  TString leaflist = "mean/D:error:rms:nsamp:chi2:ndf";
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
     TString chname = *iter_dev;
@@ -140,7 +125,7 @@ void TaStatBuilder::FillTree(TTree *fTree, TString prefix){
     fBranch_ptr->GetLeaf("chi2")->SetAddress(&(fAverageMap[chname].chi2));
     fBranch_ptr->GetLeaf("ndf")->SetAddress(&(fAverageMap[chname].ndf));
     fBranch_ptr->GetLeaf("rms")->SetAddress(&(fAverageMap[chname].rms));
-
+    fBranch_ptr->GetLeaf("nsamp")->SetAddress(&(fAverageMap[chname].num_samples));
     iter_dev++;
   }
 }
@@ -153,16 +138,12 @@ void TaStatBuilder::UpdateStatBuilderByIHWP(TaStatBuilder finput,
 
 void TaStatBuilder::UpdateStatBuilder(TaStatBuilder finput ,Int_t sign){
   weighting_errorbar = (finput.fAverageMap["Adet"]).error;
-  
+  // FIXME : Error if Adet is not found in the fAverageMap
+  fAxisTitle.push_back(fTitle_tmp);
   auto iter_dev = (finput.fDeviceNameList).begin();
   while(iter_dev != (finput.fDeviceNameList).end()){
-    
-    if( find(fDeviceNameList.begin(),fDeviceNameList.end(),
-	     *iter_dev)==fDeviceNameList.end())
-      fDeviceNameList.push_back(*iter_dev);
-    
-    UpdateLocalAverage(fLocalAverageMap[*iter_dev],
-		       finput.fLocalAverageMap[*iter_dev],sign);
+    UpdateStatData(*iter_dev,
+		   finput.fAverageMap[*iter_dev],sign);
     iter_dev++;
   }
 }
@@ -179,7 +160,8 @@ TaStatBuilder TaStatBuilder::GetNullStatBuilder(){
 	    *iter_dev) == fNullStatBuilder.fDeviceNameList.end())
       fNullStatBuilder.fDeviceNameList.push_back(*iter_dev);
     // FIXME : should be aborted when channel map mismatched
-    fNullStatBuilder.fAverageMap[*iter_dev] = GetNullAverage(inStatBuilder.fAverageMap[*iter_dev],outStatBuilder.fAverageMap[*iter_dev]);
+    fNullStatBuilder.fAverageMap[*iter_dev] = GetNullAverage(inStatBuilder.fAverageMap[*iter_dev],
+							     outStatBuilder.fAverageMap[*iter_dev]);
     iter_dev++;
   }
   return fNullStatBuilder;
@@ -203,10 +185,13 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     Double_t fCounter=0;
     auto iter_data = fStatDataArray.begin();
     while(iter_data!=fStatDataArray.end()){
-      y_val.push_back((*iter_data).mean);
-      y_err.push_back((*iter_data).error);
-      x_val.push_back(fCounter++);
+      if((*iter_data).error!=0.0){
+	y_val.push_back((*iter_data).mean);
+	y_err.push_back((*iter_data).error);
+	x_val.push_back(fCounter);
+      }
       iter_data++;
+      fCounter++;
     }
     
     gStyle->SetOptStat(0);
@@ -246,8 +231,8 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     tge->Fit("f1","Q");
     tge->SetTitle(title);
 
-    fLocalAverageMap[(*iter_dev).first].SetChi2NDF(f1->GetChisquare(),
-						   f1->GetNDF());
+    fAverageMap[(*iter_dev).first].SetChi2NDF(f1->GetChisquare(),
+					      f1->GetNDF());
     Double_t fit_mean = f1->GetParameter(0);
     TH1F *htge = tge->GetHistogram();
     htge->GetXaxis()->Set(npt,-0.5,npt-0.5);
@@ -260,7 +245,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
       double val = (y_array[i]-fit_mean)/yerr_array[i];
       int ibin = x_array[i]+1;
       hPull.SetBinContent(ibin,val);
-      hPull.GetXaxis()->SetBinLabel(ibin,fAxisTitle[i]);
+      hPull.GetXaxis()->SetBinLabel(ibin,fAxisTitle[x_val[i]]);
       hPull1D.Fill(val);
     }
     

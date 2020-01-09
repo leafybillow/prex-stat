@@ -8,7 +8,7 @@
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 TF1* PullFitByPitts(map<Int_t,TaStatBuilder> fPittsStatBuilderMap, TString chname);
 
-void AveragePostpan(){
+void WeightedAveragePostpan(){
   vector<TString> fDetectorNameList{"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
 				    "reg_asym_us_dd","reg_asym_ds_avg",
 				    "reg_asym_left_dd","reg_asym_right_dd"};
@@ -104,13 +104,13 @@ void AveragePostpan(){
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetTmpTitle(Form("%d.%d",run_number,mini_number));
-	// fSlugStatBuilderMap[myKey].UpdateWeightingError(fChannelMap[detName]);
+	fSlugStatBuilderMap[myKey].UpdateWeightingError(fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateMainDet(fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
-	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
-	// 					  fChannelMap["diff_bpm11X"]);
-	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
-	// 					  fChannelMap["diff_bpm12X"]);
+	fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
+						  fChannelMap["diff_bpm11X"]);
+	fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
+						  fChannelMap["diff_bpm12X"]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  fSlugStatBuilderMap[myKey].UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
@@ -145,7 +145,7 @@ void AveragePostpan(){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+".pdf");
+    // (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fSlugTree->Fill();
     fSlugLog_md.AddLine();

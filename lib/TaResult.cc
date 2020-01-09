@@ -26,6 +26,11 @@ void TaResult::AddFloatEntry(Double_t finput){
   TString format_input = Form("%.2f",finput);
   this_row.AddEntry(format_input);
 }
+void TaResult::AddChi2NDF(Double_t chi2 , Double_t ndf){
+  TString text = Form("%.1f/%.0f",chi2,ndf);
+  this_row.AddEntry(text);
+}
+
 void TaResult::AddLine(){
   if(this_row.size()!=0){
     fRows.push_back(this_row);
