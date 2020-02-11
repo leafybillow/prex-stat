@@ -5,6 +5,7 @@
 #include "TMath.h"
 
 typedef struct{Double_t mean,err,rms,num_samples;} STAT;
+
 class TaAccumulator:public TObject{
 public:
   TaAccumulator();

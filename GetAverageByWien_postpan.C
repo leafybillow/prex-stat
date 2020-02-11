@@ -45,7 +45,6 @@ void GetAverageByWien_postpan(Int_t arm_select){
   			 "IHWP In, Second Flip-Left",
   			 "IHWP Out, Second Flip-Left"};
   
-
   TString ihwp_text[]={"IN","OUT","IN","OUT",
 		     "IN","OUT","IN","OUT"};
   TString wien_text[]={"RIGHT","RIGHT","LEFT","LEFT",

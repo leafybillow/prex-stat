@@ -7,7 +7,7 @@
 
 void GetAverageBySlug_postpan(){
   TStopwatch tsw;
-  std::map<Int_t,Int_t> fBCMRunMap = LoadNormalizationMap();
+  std::map<Int_t,TString> fBCMRunMap = LoadNormalizationMap();
   TString bcm_array[]={"asym_bcm_an_us","asym_bcm_an_ds",
 		       "asym_bcm_an_ds3","asym_bcm_an_ds10",
 		       "asym_bcm_dg_us","asym_bcm_dg_ds",
@@ -246,9 +246,9 @@ void GetAverageBySlug_postpan(){
       ihwp_str = fRunInfoMap[run_number].GetIHWPStatus();
       wien_str = fRunInfoMap[run_number].GetWienMode();
 	
-      Int_t bcm_id;
+      TString norm_bcm_name;
       if(fBCMRunMap.find(run_number)!=fBCMRunMap.end()){
-	bcm_id = fBCMRunMap[run_number];
+	norm_bcm_name = fBCMRunMap[run_number];
 	if(fDetectorArray[myArmFlag].error>0){
 	  double weight = 1.0/pow(fDetectorArray[myArmFlag].error,2);
 	  total_weight+=weight;

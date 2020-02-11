@@ -130,8 +130,12 @@ void WeightedAveragePostpan(){
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
   TaResult fSlugLog_md("average_by_slug_maindet.log");
+  TaResult fSlugLog_beam("average_by_slug_beamline.log");
   vector<TString> header_slug{"Slug","Mean(ppb)","Error","chi2/ndf"};
+  vector<TString> header_slug_beamline{"Slug","Aq(ppb)","D4aX(nm)","D4eX(nm)",
+				       "D4aY(nm)","D4eY(nm)","DXE(nm)"};
   fSlugLog_md.AddHeader(header_slug);
+  fSlugLog_beam.AddHeader(header_slug_beamline);
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
   TString last_wien_state="";
@@ -154,6 +158,16 @@ void WeightedAveragePostpan(){
     fSlugLog_md.AddFloatEntry(((*iter_slug).second).fAverageMap["Adet"].error*1e9);
     fSlugLog_md.AddChi2NDF(((*iter_slug).second).fAverageMap["Adet"].chi2,
 			   ((*iter_slug).second).fAverageMap["Adet"].ndf);
+
+    fSlugLog_beam.AddLine();
+    fSlugLog_beam.AddStringEntry(slug_label);
+
+    fSlugLog_beam.AddFloatEntry(((*iter_slug).second).fAverageMap["Aq"].mean*1e9);
+    fSlugLog_beam.AddFloatEntry(((*iter_slug).second).fAverageMap["diff_bpm4aX"].mean*1e6);
+    fSlugLog_beam.AddFloatEntry(((*iter_slug).second).fAverageMap["diff_bpm4eX"].mean*1e6);
+    fSlugLog_beam.AddFloatEntry(((*iter_slug).second).fAverageMap["diff_bpm4aY"].mean*1e6);
+    fSlugLog_beam.AddFloatEntry(((*iter_slug).second).fAverageMap["diff_bpm4eY"].mean*1e6);
+    fSlugLog_beam.AddFloatEntry(((*iter_slug).second).fAverageMap["diff_bpmE"].mean*1e6);		
     Int_t pittsID = fPittMap[(*iter_slug).first];
     TString IHWP_state = (fSlugInfoMap[(*iter_slug).first]).first;
     TString Wien_state = (fSlugInfoMap[(*iter_slug).first]).second;
@@ -173,6 +187,9 @@ void WeightedAveragePostpan(){
   fSlugLog_md.InsertHorizontalLine();
   fSlugLog_md.Print();
   fSlugLog_md.Close();
+  fSlugLog_beam.InsertHorizontalLine();
+  fSlugLog_beam.Print();
+  fSlugLog_beam.Close();
 
   TaStatBuilder fPittsStatBuilder;
   map<Int_t,TaStatBuilder> fPittsNullStatMap;
