@@ -6,13 +6,6 @@ TaStatBuilder::TaStatBuilder(){
   kUseWeight = kFALSE;
 }
 
-void TaStatBuilder::UpdateMainDet(StatData input){
-  weighting_errorbar = input.error;
-  if(input.error>0.0)
-    fAxisTitle.push_back(fTitle_tmp);
-  UpdateStatData("Adet",input);
-}
-
 void TaStatBuilder::UpdateWeightingError(StatData input){
   kUseWeight = kTRUE;
   weighting_errorbar = input.error;
@@ -23,20 +16,22 @@ void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
     fDeviceNameList.push_back(chname);
   
-  // if(input.error>0)
-  fStatDataArrayMap[chname].push_back(input);
-
   if(fAverageMap.find(chname)==fAverageMap.end())
     fAverageMap[chname].Zero();
 
   UpdateStatData(fAverageMap[chname],input,sign);
+
+  input.mean = sign*input.mean;
+  fStatDataArrayMap[chname].push_back(input);
+  fLabelMap[chname].push_back(fLabel_tmp);
+
 }
 
 void TaStatBuilder::UpdateStatData(StatData &dest,
 				   StatData input,Int_t sign){
-  if(input.error<=0)
+  if(input.error<=0 || input.error!=input.error)
     return;
-
+  
   if(dest.error==0){
     dest.mean = sign*input.mean;
     if(kUseWeight)
@@ -57,8 +52,9 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
     dest.mean = (mean1*weight1 + mean2*weight2)/weight_sum;
     dest.error =  sqrt(1.0/weight_sum);
   }
-}
 
+  UpdateCentralMoment(dest,input,sign);
+}
 
 // void TaStatBuilder::UpdateCentralMoment(TString chname,StatData input, Int_t sign){
 //   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
@@ -72,37 +68,41 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
 //   UpdateCentralMoment(fAverageMap[chname],input,sign);
 // }
 
-// void TaStatBuilder::UpdateCentralMoment(StatData &dest,
-// 					StatData input,Int_t sign){
-//   if(input.error<=0)
-//     return;
+void TaStatBuilder::UpdateCentralMoment(StatData &dest,
+					StatData input,Int_t sign){
 
-//   Double_t mean2 = sign*input.mean;
-//   Double_t error2 = input.error;
-//   Double_t rms2 = input.rms;
+  // FIXME sign not in used
+  if(input.error<=0 || input.error!=input.error)
+    return;
+  if(input.mean_sum==0)
+    input.mean_sum = input.mean;
   
-//   Double_t nsamples2 = 0.0;
-//   if(error2!=0)
-//     nsamples2= pow(rms2/error2,2);
-//   Double_t M2_2 = pow(rms2,2)*nsamples2;
+  Double_t mean2 = sign*input.mean_sum;
+  Double_t error2 = input.error;
+  Double_t rms2 = input.rms;
+  
+  Double_t nsamples2 = 0.0;
+  if(error2!=0 && input.num_samples==0)
+    nsamples2= pow(rms2/error2,2);
+  else
+    nsamples2 = input.num_samples;
+  
+  Double_t M2_2 = pow(rms2,2)*nsamples2;
 
-//   if(nsamples2!=0){
-//     Double_t mean1 = dest.mean;
-//     Double_t error1 = dest.error;
-//     Double_t rms1 = dest.rms;
-//     Double_t nsamples1=0.0;
-//     if(error1!=0)
-//       nsamples1 = pow(rms1/error1,2);
-//     Double_t M2_1 = pow(rms1,2)*nsamples1;
-//     Double_t delta_mean = mean2-mean1;
-//     M2_1 += M2_2;
-//     M2_1 += nsamples1*nsamples2*pow(delta_mean,2)/(nsamples1+nsamples2);
-//     dest.mean += nsamples2*delta_mean/(nsamples1+nsamples2);
-//     nsamples1+=nsamples2;
-//     dest.rms = sqrt(M2_1/nsamples1);
-//     dest.error = dest.rms/sqrt(nsamples1);
-//   }
-// }
+  if(nsamples2!=0){
+    Double_t mean1 = dest.mean_sum;
+    Double_t rms1 = dest.rms;
+    Double_t nsamples1=dest.num_samples;
+    Double_t M2_1 = pow(rms1,2)*nsamples1;
+    Double_t delta_mean = mean2-mean1;
+    M2_1 += M2_2;
+    M2_1 += nsamples1*nsamples2*pow(delta_mean,2)/(nsamples1+nsamples2);
+    dest.mean_sum += nsamples2*delta_mean/(nsamples1+nsamples2);
+    nsamples1+=nsamples2;
+    dest.num_samples = nsamples1;
+    dest.rms = sqrt(M2_1/nsamples1);
+  }
+}
 
 StatData TaStatBuilder::GetNullAverage(StatData in1, StatData in2){
   StatData fRetStatData;
@@ -139,7 +139,6 @@ void TaStatBuilder::UpdateStatBuilderByIHWP(TaStatBuilder finput,
 void TaStatBuilder::UpdateStatBuilder(TaStatBuilder finput ,Int_t sign){
   weighting_errorbar = (finput.fAverageMap["Adet"]).error;
   // FIXME : Error if Adet is not found in the fAverageMap
-  fAxisTitle.push_back(fTitle_tmp);
   auto iter_dev = (finput.fDeviceNameList).begin();
   while(iter_dev != (finput.fDeviceNameList).end()){
     UpdateStatData(*iter_dev,
@@ -183,16 +182,27 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     vector<Double_t> y_val;
     vector<Double_t> y_err;
     Double_t fCounter=0;
+    Double_t rescale = 1.0;
+    if( (*iter_dev).first.Contains("asym"))
+      rescale = 1e9;
+    if( (*iter_dev).first.Contains("Adet"))
+      rescale = 1e9;
+    if( (*iter_dev).first.Contains("Aq"))
+      rescale = 1e9;
+    if( (*iter_dev).first.Contains("diff"))
+      rescale = 1e6;
+
     auto iter_data = fStatDataArray.begin();
     while(iter_data!=fStatDataArray.end()){
-      if((*iter_data).error!=0.0){
-	y_val.push_back((*iter_data).mean);
-	y_err.push_back((*iter_data).error);
+      if((*iter_data).error>0.0){
+	y_val.push_back((*iter_data).mean*rescale);
+	y_err.push_back((*iter_data).error*rescale);
 	x_val.push_back(fCounter);
       }
       iter_data++;
       fCounter++;
     }
+    if(x_val.size()==0){iter_dev++; continue;};
     
     gStyle->SetOptStat(0);
     gStyle->SetOptFit(1);
@@ -240,7 +250,8 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
       htge->GetXaxis()->SetBinLabel(ibin,Form("%.1f",x_val[ibin-1]));
     TH1D hPull("hPull","",npt,-0.5,npt-0.5);
     TH1D hPull1D("hPull1D","1D pull distribution",30,-8,8);
-  
+
+    vector<TString> fAxisTitle = fLabelMap[(*iter_dev).first];
     for(int i=0;i<npt;i++){
       double val = (y_array[i]-fit_mean)/yerr_array[i];
       int ibin = x_array[i]+1;
@@ -260,7 +271,6 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     hPull.DrawCopy("b");
     p2.SetGridx(1);
     p2.SetGridy(1);
-
   
     gStyle->SetOptFit(1);
     gStyle->SetOptStat("MRou");

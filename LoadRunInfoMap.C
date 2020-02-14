@@ -2,7 +2,7 @@
 
 map<Int_t, TaRunInfo> LoadRunInfoMap(){
   map< Int_t, TaRunInfo > fRunInfoMap;  
-  for(int islug=1;islug<=94;islug++){
+  for(int islug=0;islug<=94;islug++){
     TString info_filename = Form("./runlist/slug%d_info.list",islug);
     ifstream slug_info;
     slug_info.open(info_filename.Data());

@@ -7,6 +7,7 @@ public:
   virtual ~StatData(){};
   Double_t mean;
   Double_t error;
+  Double_t mean_sum;
   Double_t rms;
   Double_t num_samples;
   Double_t m2;
@@ -18,6 +19,7 @@ public:
   void Zero(){
     mean =0.0;
     error =0.0;
+    mean_sum=0.0;
     rms =0.0;
     num_samples =0.0;
     m2 = 0.0;
@@ -25,6 +27,12 @@ public:
     ndf = 0.0;
   };
   void RegisterAddressByName_postpan(TBranch* aBranch){
+    aBranch->GetLeaf("mean")->SetAddress(&mean);
+    aBranch->GetLeaf("rms")->SetAddress(&rms);
+    aBranch->GetLeaf("err")->SetAddress(&error);
+  };
+  
+  void RegisterAddressByName_dither(TBranch* aBranch){
     aBranch->GetLeaf("mean")->SetAddress(&mean);
     aBranch->GetLeaf("rms")->SetAddress(&rms);
     aBranch->GetLeaf("err")->SetAddress(&error);
@@ -55,7 +63,7 @@ public:
   void UpdateStatData(StatData &tgt,StatData input,Int_t sign=1);
   void UpdateStatData(TString chname,StatData input,Int_t sign=1);
   
-  // void UpdateCentralMoment(StatData &tgt,StatData input,Int_t sign=1);
+  void UpdateCentralMoment(StatData &tgt,StatData input,Int_t sign=1);
   // void UpdateCentralMoment(TString chname,StatData input,Int_t sign=1);
   
   StatData GetNullAverage(StatData in1,StatData in2);
@@ -63,8 +71,13 @@ public:
   void PullFitAllChannels(TString filename);
   void FillTree(TTree *,TString prefix="");
   void ProcessNullAsym(TTree*);
-  void SetTmpTitle(TString input){ fTitle_tmp = input;};
+  void SetLabel(TString input){ fLabel_tmp = input;};
   map<TString,StatData> fAverageMap;
+
+  StatDataArray GetStatDataArrayByName(TString name){
+    return fStatDataArrayMap[name];};
+  vector<TString> GetStatDataLabelByName(TString name){
+    return fLabelMap[name];};
   
   vector<TString> fDeviceNameList;
 private:
@@ -73,8 +86,8 @@ private:
   Int_t fSign;
   
   map<TString, StatDataArray> fStatDataArrayMap;
-  vector<TString> fAxisTitle;
-  TString fTitle_tmp;
+  map<TString, vector<TString> >fLabelMap;
+  TString fLabel_tmp;
   vector<TString> fIVNameList;
   vector<TString> fDVNameList;
   map<TString,TaStatBuilder> fStatBuilderByIHWP;
