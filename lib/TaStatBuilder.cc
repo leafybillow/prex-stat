@@ -52,7 +52,7 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
     dest.error =  sqrt(1.0/weight_sum);
   }
 
-
+  UpdateCentralMoment(dest,input,sign);
 }
 
 // void TaStatBuilder::UpdateCentralMoment(TString chname,StatData input, Int_t sign){
@@ -180,6 +180,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     vector<Double_t> x_val;
     vector<Double_t> y_val;
     vector<Double_t> y_err;
+    vector<Double_t> y_rms;
     Double_t fCounter=0;
     Double_t rescale = 1.0;
     if( (*iter_dev).Contains("asym"))
@@ -196,6 +197,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
       if((*iter_data).error>0.0){
 	y_val.push_back((*iter_data).mean*rescale);
 	y_err.push_back((*iter_data).error*rescale);
+	y_rms.push_back((*iter_data).rms*rescale/1e3);
 	x_val.push_back(fCounter);
       }
       iter_data++;
@@ -225,10 +227,12 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     Int_t npt = x_val.size();
     Double_t *x_array = new Double_t[npt];
     Double_t *y_array = new Double_t[npt];
+    Double_t *rms_array = new Double_t[npt];
     Double_t *yerr_array = new Double_t[npt];
     for(int i=0;i<npt;i++){
       x_array[i]=i;
       y_array[i]=y_val[i];
+      rms_array[i]=y_rms[i];
       yerr_array[i]=y_err[i];
     }
 
@@ -282,6 +286,17 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     
     c1.Print(filename);
 
+    c1.Clear();
+    TGraph *g_rms =new TGraph(npt,x_array,rms_array);
+    g_rms->SetTitle( *iter_dev+" RMS (ppm)");
+    TH1F *htrms = g_rms->GetHistogram();
+    htrms->GetXaxis()->Set(npt,-0.5,npt-0.5);
+    htrms->GetYaxis()->SetTitle("RMS (ppm)");
+    for(int ibin=1;ibin<=npt;ibin++)
+      htrms->GetXaxis()->SetBinLabel(ibin,fAxisTitle[x_val[ibin-1]]);
+    g_rms->SetMarkerStyle(20);
+    g_rms->Draw("AP");
+    c1.Print(filename);
     iter_dev++;
   }
   c1.Print(filename+"]");
