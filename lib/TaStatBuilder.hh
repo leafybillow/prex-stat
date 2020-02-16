@@ -58,7 +58,6 @@ public:
   
   void LoadRunInfo(TaRunInfo* aRunInfo);
   void UpdateWeightingError(StatData input);
-  void UpdateMainDet(StatData input);
   
   void UpdateStatData(StatData &tgt,StatData input,Int_t sign=1);
   void UpdateStatData(TString chname,StatData input,Int_t sign=1);
@@ -88,9 +87,11 @@ private:
   map<TString, StatDataArray> fStatDataArrayMap;
   map<TString, vector<TString> >fLabelMap;
   TString fLabel_tmp;
-  vector<TString> fIVNameList;
-  vector<TString> fDVNameList;
   map<TString,TaStatBuilder> fStatBuilderByIHWP;
+
+  //FIXME: NOT in used so far
+  vector<TString> fIVNameList; 
+  vector<TString> fDVNameList;
   
   ClassDef(TaStatBuilder,0);
 };

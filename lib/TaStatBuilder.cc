@@ -24,7 +24,6 @@ void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
   input.mean = sign*input.mean;
   fStatDataArrayMap[chname].push_back(input);
   fLabelMap[chname].push_back(fLabel_tmp);
-
 }
 
 void TaStatBuilder::UpdateStatData(StatData &dest,
@@ -53,7 +52,7 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
     dest.error =  sqrt(1.0/weight_sum);
   }
 
-  UpdateCentralMoment(dest,input,sign);
+
 }
 
 // void TaStatBuilder::UpdateCentralMoment(TString chname,StatData input, Int_t sign){
@@ -175,21 +174,21 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
   TCanvas c1("c1","c1",1100,600);
   c1.cd();
   c1.Print(filename+"[");
-  auto iter_dev = fStatDataArrayMap.begin();
-  while(iter_dev!=fStatDataArrayMap.end()){
-    StatDataArray fStatDataArray  = (*iter_dev).second;
+  auto iter_dev = fDeviceNameList.begin();
+  while(iter_dev!=fDeviceNameList.end()){
+    StatDataArray fStatDataArray  = fStatDataArrayMap[*iter_dev];
     vector<Double_t> x_val;
     vector<Double_t> y_val;
     vector<Double_t> y_err;
     Double_t fCounter=0;
     Double_t rescale = 1.0;
-    if( (*iter_dev).first.Contains("asym"))
+    if( (*iter_dev).Contains("asym"))
       rescale = 1e9;
-    if( (*iter_dev).first.Contains("Adet"))
+    if( (*iter_dev).Contains("Adet"))
       rescale = 1e9;
-    if( (*iter_dev).first.Contains("Aq"))
+    if( (*iter_dev).Contains("Aq"))
       rescale = 1e9;
-    if( (*iter_dev).first.Contains("diff"))
+    if( (*iter_dev).Contains("diff"))
       rescale = 1e6;
 
     auto iter_data = fStatDataArray.begin();
@@ -208,7 +207,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     gStyle->SetOptFit(1);
 
     c1.Clear();
-    TString title = (*iter_dev).first;
+    TString title = *iter_dev;
     double ySep = 0.3;
     double xSep = 0.65;
 
@@ -241,7 +240,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     tge->Fit("f1","Q");
     tge->SetTitle(title);
 
-    fAverageMap[(*iter_dev).first].SetChi2NDF(f1->GetChisquare(),
+    fAverageMap[(*iter_dev)].SetChi2NDF(f1->GetChisquare(),
 					      f1->GetNDF());
     Double_t fit_mean = f1->GetParameter(0);
     TH1F *htge = tge->GetHistogram();
@@ -251,7 +250,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     TH1D hPull("hPull","",npt,-0.5,npt-0.5);
     TH1D hPull1D("hPull1D","1D pull distribution",30,-8,8);
 
-    vector<TString> fAxisTitle = fLabelMap[(*iter_dev).first];
+    vector<TString> fAxisTitle = fLabelMap[*iter_dev];
     for(int i=0;i<npt;i++){
       double val = (y_array[i]-fit_mean)/yerr_array[i];
       int ibin = x_array[i]+1;
@@ -280,7 +279,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     hPull1D.Fit(fg->GetName(),"Q");
     hPull1D.DrawCopy();
     fg->Draw("same");
-  
+    
     c1.Print(filename);
 
     iter_dev++;
