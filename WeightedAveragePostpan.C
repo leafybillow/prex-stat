@@ -138,8 +138,8 @@ void WeightedAveragePostpan(){
   TBranch *fBranchSlug = fSlugTree->Branch("slug",&fSlugID);
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
-  // TaResult fSlugLog_md("average_by_slug_maindet_reg.log");
-  TaResult fSlugLog_beamline("weighted_average_by_slug_beamline.log");
+  // TaResult fSlugLog_md("average_by_slug_maindet_reg_reg.log");
+  TaResult fSlugLog_beamline("weighted_average_by_slug_beamline_reg.log");
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
   TString last_wien_state="";
@@ -204,13 +204,14 @@ void WeightedAveragePostpan(){
   // fPittsStatBuilder.PullFitAllChannels("reg_pitts_pullfit.pdf");
   // TaResult fPittLog_md("average_by_pitt_maindet_reg.log");
   // ReportDetectorLog(fPittsStatBuilderMap,fPittLog_md);
-  TaResult fPittLog_beamline("weighted_average_by_pitt_beamline.log");
+  TaResult fPittLog_beamline("weighted_average_by_pitt_beamline_reg.log");
   ReportBeamLineLog(fPittsStatBuilder,fPittLog_beamline);
-  
-  TaResult fPittLog_null_beamline("weighted_null_by_pitt_beamline.log");
+
+  fPittNullStatBuilder.PullFitAllChannels("reg_pitt_null_pullfit.pdf");
+  TaResult fPittLog_null_beamline("weighted_null_by_pitt_beamline_reg.log");
   ReportBeamLineLog(fPittNullStatBuilder,fPittLog_null_beamline);
 
-  TaResult fPittLog_null_md("weighted_null_by_pitt_maindet.log");
+  TaResult fPittLog_null_md("weighted_null_by_pitt_maindet_reg.log");
   ReportDetectorLog(fPittNullStatBuilder,fPittLog_null_md);
 
   TaStatBuilder fWienStatBuilder;
@@ -238,11 +239,12 @@ void WeightedAveragePostpan(){
   
   // TaResult fWienLog_md("average_by_wien_maindet_reg.log");
   //  ReportDetectorLog(fWienStatBuilderMap,fWienLog_md);
-  TaResult fWienLog_beamline("weighted_average_by_wien_beamline.log");
+  fWienNullStatBuilder.PullFitAllChannels("reg_wien_null_pullfit.pdf");
+  TaResult fWienLog_beamline("weighted_average_by_wien_beamline_reg.log");
   ReportBeamLineLog(fWienStatBuilder,fWienLog_beamline);
-  TaResult fWienLog_null_beamline("weighted_null_by_wien_beamline.log");
+  TaResult fWienLog_null_beamline("weighted_null_by_wien_beamline_reg.log");
   ReportBeamLineLog(fWienNullStatBuilder,fWienLog_null_beamline);
-  TaResult fWienLog_null_md("weighted_null_by_wien_maindet.log");
+  TaResult fWienLog_null_md("weighted_null_by_wien_maindet_reg.log");
   ReportDetectorLog(fWienNullStatBuilder,fWienLog_null_md);
 
   // fWienStatBuilder.PullFitAllChannels("reg_wien_pullfit.pdf");

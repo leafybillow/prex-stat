@@ -18,8 +18,9 @@ void ReportDetectorLog(TaStatBuilder fSBMap,TaResult& aLog);
 void ReportBeamLineLog(TaStatBuilder fSBMap,TaResult& aLog);
 
 void AverageDither(){
-  vector<TString> fDetectorNameList{"dit_asym_us_avg","dit_asym_usr","dit_asym_usl",
-				    "dit_asym_us_dd"};
+  vector<TString> fDetectorNameList{"dit_asym_us_avg","dit_asym_us_dd",
+				    "dit_asym_usr","dit_asym_usl"};
+				    
   //"dit_asym_ds_avg","dit_asym_left_dd","dit_asym_right_dd"};
   
   // vector<TString> fRawDetectorNameList{"asym_us_avg","asym_usr","asym_usl",
