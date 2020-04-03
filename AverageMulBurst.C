@@ -17,33 +17,19 @@ void ReportBeamLineLog(map<Int_t,TaStatBuilder> fSBMap,TaResult& aLog);
 void ReportDetectorLog(TaStatBuilder fSBMap,TaResult& aLog);
 void ReportBeamLineLog(TaStatBuilder fSBMap,TaResult& aLog);
 
-void AveragePostpanCobpm(){
-  vector<TString> fDetectorNameList{"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
-				    "reg_asym_us_dd","reg_asym_ds_avg",
-				    "reg_asym_left_dd","reg_asym_right_dd"};
+void AverageMulBurst(){
+  vector<TString> fDetectorNameList={"asym_us_avg","asym_usr","asym_usl","asym_us_dd",
+				     "asym_battery1l","asym_battery2l",
+				     "asym_battery1r","asym_battery2r"};
+  //"dit_asym_ds_avg","dit_asym_left_dd","dit_asym_right_dd"};
   
-  vector<TString> fRawDetectorNameList{"asym_us_avg","asym_usr","asym_usl",
-  				       "asym_us_dd","asym_ds_avg",
-  				       "asym_left_dd","asym_right_dd"};
+  // vector<TString> fRawDetectorNameList{"asym_us_avg","asym_usr","asym_usl",
+  // 				       "asym_us_dd","asym_ds_avg",
+  // 				       "asym_left_dd","asym_right_dd"};
   
-  vector<TString> fBPMNameList{"diff_bpm4aX","diff_bpm4eX",
-  			       "diff_bpm4aY","diff_bpm4eY",
-  			       "diff_bpmE","diff_bpm12X"};
-  
-  vector<TString> fBCMNameList={"asym_bcm_an_us","asym_bcm_an_ds",
-				"asym_bcm_an_ds3","asym_bcm_dg_us",
-				"asym_bcm_dg_ds",
-				"reg_asym_bcm_an_us","reg_asym_bcm_an_ds",
-				"reg_asym_bcm_an_ds3","reg_asym_bcm_dg_us",
-				"reg_asym_bcm_dg_ds"};
-  
-  TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
-  
-  Int_t nBPM = fBPMNameList.size();
   Int_t nDet = fDetectorNameList.size();
-
   
-  map< Int_t,TString> fBCMRunMap = LoadNormalizationMap();
+  // map< Int_t,TString> fBCMRunMap = LoadNormalizationMap();
   map< Int_t, TaRunInfo > fRunInfoMap = LoadRunInfoMap();
   map<SLUG_ARM,Int_t> fPittMap = LoadPittsMap();
   map<SLUG_ARM,pair<TString,TString> > fSlugInfoMap;
@@ -54,46 +40,42 @@ void AveragePostpanCobpm(){
   
   fDeviceNameList.insert(fDeviceNameList.end(),
 			 fDetectorNameList.begin(),fDetectorNameList.end());
-  fDeviceNameList.insert(fDeviceNameList.end(),
-			 fRawDetectorNameList.begin(),fRawDetectorNameList.end());
-  fDeviceNameList.insert(fDeviceNameList.end(),
-			 fBPMNameList.begin(),fBPMNameList.end());
-  fDeviceNameList.insert(fDeviceNameList.end(),
-			 fBCMNameList.begin(),fBCMNameList.end());
+  // fDeviceNameList.insert(fDeviceNameList.end(),
+  // 			 fRawDetectorNameList.begin(),fRawDetectorNameList.end());
+  // fDeviceNameList.insert(fDeviceNameList.end(),
+  // 			 fBPMNameList.begin(),fBPMNameList.end());
+  // fDeviceNameList.insert(fDeviceNameList.end(),
+  // 			 fBCMNameList.begin(),fBCMNameList.end());
   
   map<SLUG_ARM, TaStatBuilder > fSlugStatBuilderMap;
   map<Int_t, TaStatBuilder > fPittsStatBuilderMap;
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./rootfiles/prexPrompt_slug%d_cbpm.root",islug);
-    if(islug<=3)
-      file_name = Form("./rootfiles/prexPrompt_slug%d.root",islug);
-    
+    TString file_name = Form("./rootfiles/MulMergedByBurst_slug%d.root",islug);
     TFile* input_file = TFile::Open(file_name);
-
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
       continue;
     }
-    TTree* mini_tree = (TTree*)input_file->Get("T");
-    if(mini_tree==NULL){
-      cerr << " Error: Mini Tree not found in "
+    TTree* burst_tree = (TTree*)input_file->Get("burst");
+    if(burst_tree==NULL){
+      cerr << " Error: Mul Tree not found in "
 	   << file_name << endl;
       continue;
     }
-    Int_t nEntries = mini_tree->GetEntries();
+    Int_t nEntries = burst_tree->GetEntries();
     Int_t run_number=0;
-    Int_t mini_number=0;
+    Int_t mini_id=0;
     Int_t last_run_number=0;
-    mini_tree->SetBranchAddress("run",&run_number);
-    mini_tree->SetBranchAddress("mini",&mini_number);
-    RegisterBranchesAddress(mini_tree,fDeviceNameList,fChannelMap);
+    burst_tree->SetBranchAddress("run",&run_number);
+    burst_tree->SetBranchAddress("mini",&mini_id);
+    RegisterBranchesAddress(burst_tree,fDeviceNameList,fChannelMap);
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
     TString detName, bcmName;
     for(int ievt=0;ievt<nEntries;ievt++){
-      mini_tree->GetEntry(ievt);
+      burst_tree->GetEntry(ievt);
       if(fRunInfoMap.find(run_number)==fRunInfoMap.end()){
 	cerr << "-- run info not found for run  "
 	     << run_number << " and will skip "  << endl;
@@ -103,13 +85,13 @@ void AveragePostpanCobpm(){
 	myRunInfo = fRunInfoMap[run_number];
 	myKey = make_pair(myRunInfo.GetSlugNumber(),
 			  myRunInfo.GetArmFlag());
-	detName = arm_switch[myRunInfo.GetArmFlag()];
-	if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
-	  cerr << "-- normalizing BCM info not found for run  "
-	       << run_number << endl;
-	  continue;  // FIXME
-	}else
-	  bcmName = "asym_"+fBCMRunMap[run_number];
+	// detName = arm_switch[myRunInfo.GetArmFlag()];
+	// if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
+	//   cerr << "-- normalizing BCM info not found for run  "
+	//        << run_number << endl;
+	//   continue;  // FIXME
+	// }else
+	//   bcmName = "asym_"+fBCMRunMap[run_number];
 	last_run_number = run_number;
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder fStatBuilder;
@@ -120,10 +102,13 @@ void AveragePostpanCobpm(){
 	}
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
-	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_number));
-	fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
-	fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
-	fSlugStatBuilderMap[myKey].UpdateStatData("regAq",fChannelMap["reg_"+bcmName]);
+	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
+	// fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
+	// fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
+	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
+	// 					  fChannelMap["diff_bpm11X"]);
+	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
+	// 					  fChannelMap["diff_bpm12X"]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  fSlugStatBuilderMap[myKey].UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
@@ -134,7 +119,7 @@ void AveragePostpanCobpm(){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open("prex_grand_average_regress_cbpm.root","RECREATE");
+  TFile *output_rf =  TFile::Open("prex_grand_average_burst.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
@@ -142,8 +127,8 @@ void AveragePostpanCobpm(){
   TBranch *fBranchSlug = fSlugTree->Branch("slug",&fSlugID);
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
-  TaResult fSlugLog_md("average_by_slug_maindet_reg_cbpm.log");
-  TaResult fSlugLog_beamline("average_by_slug_beamline_cbpm.log");
+  TaResult fSlugLog_md("average_by_slug_burst.log");
+  // TaResult fSlugLog_beamline("average_by_slug_beamline.log");
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
   TString last_wien_state="";
@@ -157,7 +142,7 @@ void AveragePostpanCobpm(){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    (*iter_slug).second.PullFitAllChannels("./plots/reg_cbpm_slug"+slug_label+".pdf");
+    (*iter_slug).second.PullFitAllChannels("./plots/burst_slug"+slug_label+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fSlugTree->Fill();
     Int_t pittsID = fPittMap[(*iter_slug).first];
@@ -180,10 +165,11 @@ void AveragePostpanCobpm(){
     iter_slug++;
   }
   
-  ReportDetectorLog(fSlugStatBuilderMap,fSlugLog_md);
-  ReportBeamLineLog(fSlugStatBuilderMap,fSlugLog_beamline);
+  // ReportDetectorLog(fSlugStatBuilderMap,fSlugLog_md);
+  // ReportBeamLineLog(fSlugStatBuilderMap,fSlugLog_beamline);
   
   TaStatBuilder fPittsStatBuilder;
+  TaStatBuilder fPittNullStatBuilder;
   map<Int_t,TaStatBuilder> fPittsNullStatMap;
   TTree *fPittsTree = new TTree("pitt","Pitts Averages");
   Int_t fPittsID;
@@ -192,22 +178,24 @@ void AveragePostpanCobpm(){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     fPittsStatBuilder.SetLabel(Form("%d",fPittsID));
-    (*iter_pitts).second.PullFitAllChannels(Form("./plots/reg_cbpm_pitts%d.pdf",fPittsID));
+    (*iter_pitts).second.PullFitAllChannels(Form("./plots/burst_pitts%d.pdf",fPittsID));
     fPittsStatBuilder.UpdateStatBuilder((*iter_pitts).second);
     ((*iter_pitts).second).FillTree(fPittsTree);
     
     TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
+    fPittNullStatBuilder.SetLabel(Form("%d",fPittsID));
+    fPittNullStatBuilder.UpdateStatBuilder(fNullStat);
     fPittsNullStatMap[fPittsID] = fNullStat;
     fNullStat.FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
     iter_pitts++;
   }
-  fPittsStatBuilder.PullFitAllChannels("reg_cbpm_pitts_pullfit.pdf");
-  TaResult fPittLog_md("average_by_pitt_maindet_reg_cbpm.log");
-  TaResult fPittLog_beamline("average_by_pitt_beamline_cbpm.log");
-  ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
-  ReportBeamLineLog(fPittsStatBuilder,fPittLog_beamline);
-
+  fPittsStatBuilder.PullFitAllChannels("burst_pitts_pullfit.pdf");
+  fPittNullStatBuilder.PullFitAllChannels("burst_pitt_null_pullfit.pdf");
+  // TaResult fPittLog_md("average_by_pitt_maindet_dit.log");
+  // ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
+  // ReportBeamLineLog(fPittsStatBuilderMap,fPittLog_beamline);
+  // TaResult fPittLog_beamline("average_by_pitt_beamline.log");
   TaStatBuilder fWienStatBuilder;
   map<Int_t,TaStatBuilder> fWienNullStateMap;
   TTree *fWienTree = new TTree("wien","Wien Averages");
@@ -216,8 +204,9 @@ void AveragePostpanCobpm(){
   auto iter_wien = fWienStatBuilderMap.begin();
   while(iter_wien!=fWienStatBuilderMap.end()){
     fWienID = (*iter_wien).first;
+    cout << fWienID << endl;
     fWienStatBuilder.SetLabel(Form("%d",fWienID));
-    (*iter_wien).second.PullFitAllChannels(Form("./plots/reg_cbpm_wien%d.pdf",fWienID));
+    (*iter_wien).second.PullFitAllChannels(Form("./plots/burst_wien%d.pdf",fWienID));
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
     (*iter_wien).second.FillTree(fWienTree);
     
@@ -227,12 +216,12 @@ void AveragePostpanCobpm(){
     fWienTree->Fill();
     iter_wien++;
   }
-
-  fWienStatBuilder.PullFitAllChannels("reg_cbpm_wien_pullfit.pdf");
-  TaResult fWienLog_md("average_by_wien_maindet_reg_cbpm.log");
-  TaResult fWienLog_beamline("average_by_wien_beamline_cbpm.log");
-  ReportDetectorLog(fWienStatBuilder,fWienLog_md);
-  ReportBeamLineLog(fWienStatBuilder,fWienLog_beamline);
+  
+  // TaResult fWienLog_beamline("average_by_wien_beamline.log"); // 
+  // ReportBeamLineLog(fWienStatBuilderMap,fWienLog_beamline);
+  fWienStatBuilder.PullFitAllChannels("burst_wien_pullfit.pdf");
+  // TaResult fWienLog_md("average_by_wien_maindet_dit.log");
+  // ReportDetectorLog(fWienStatBuilder,fWienLog_md);
 
   fWienTree->Write();
   fPittsTree->Write();
@@ -251,7 +240,7 @@ void RegisterBranchesAddress(TTree *aTree,
     }
     TBranch *aBranch = aTree->GetBranch(*iter);
     if(aBranch!=NULL){
-      fMap[*iter].RegisterAddressByName_postpan(aBranch);
+      fMap[*iter].RegisterAddressByName_dither(aBranch);
     }else{
       fMap[*iter] = fStatDataZero;
     }
@@ -361,7 +350,7 @@ void ReportBeamLineLog(map<Int_t,TaStatBuilder> fSBMap,
   vector<TString> headers={"#",
 			   "Aq(ppb)","RMS(ppm)",
 			   "D4aX(nm)","RMS(um)",
-			   "D4eX(nm)","RMS(um)",
+			   "D4eX(ppb)","RMS(ppm)",
 			   "D4aY(nm)","RMS(um)",
 			   "D4eY(nm)","RMS(um)",
 			   "DXE(nm)","RMS(um)"};
@@ -418,57 +407,6 @@ void ReportDetectorLog(TaStatBuilder fStatBuilder,
   aLog.AddFloatEntry(fStatBuilder.fAverageMap["Adet"].rms*1e6);
   aLog.AddChi2NDF(fStatBuilder.fAverageMap["Adet"].chi2,
 		  fStatBuilder.fAverageMap["Adet"].ndf);
-  
-  aLog.InsertHorizontalLine();
-  aLog.Print();
-  aLog.Close();
-}
-
-void ReportBeamLineLog(TaStatBuilder fStatBuilder,TaResult& aLog){
-  vector<TString> headers={"#",
-			   "Aq(ppb)","RMS(ppm)",
-			   "D4aX(nm)","RMS(um)",
-			   "D4eX(nm)","RMS(um)",
-			   "D4aY(nm)","RMS(um)",
-			   "D4eY(nm)","RMS(um)",
-			   "DXE(nm)","RMS(um)"};
-
-  vector<TString> bpmlist={"diff_bpm4aX","diff_bpm4eX",
-			   "diff_bpm4aY","diff_bpm4eY",
-  			   "diff_bpmE"};
-
-  aLog.AddHeader(headers);
-  vector<TString> fLabel = fStatBuilder.GetStatDataLabelByName("Adet");
-  map<TString, StatDataArray> fStatArrayMap;
-  auto iter_bpm = bpmlist.begin();
-  while(iter_bpm!=bpmlist.end()){
-    fStatArrayMap[*iter_bpm] = fStatBuilder.GetStatDataArrayByName(*iter_bpm);
-    iter_bpm++;
-  }
-  fStatArrayMap["Aq"] = fStatBuilder.GetStatDataArrayByName("Aq");
-  Int_t ndata = fLabel.size();
-  for(int i=0;i<ndata;i++){
-    aLog.AddLine();
-    aLog.AddStringEntry(fLabel[i]);
-    aLog.AddFloatEntry(fStatArrayMap["Aq"][i].mean*1e9);
-    aLog.AddFloatEntry(fStatArrayMap["Aq"][i].rms*1e6);
-    auto iter_bpm = bpmlist.begin();
-    while(iter_bpm!=bpmlist.end()){
-      aLog.AddFloatEntry(fStatArrayMap[*iter_bpm][i].mean*1e6);
-      aLog.AddFloatEntry(fStatArrayMap[*iter_bpm][i].rms*1e3);
-      iter_bpm++;
-    }
-  }
-  aLog.InsertHorizontalLine();
-  aLog.AddStringEntry("Average");
-  aLog.AddFloatEntry(fStatBuilder.fAverageMap["Aq"].mean*1e9);
-  aLog.AddFloatEntry(fStatBuilder.fAverageMap["Aq"].rms*1e6);
-  iter_bpm = bpmlist.begin();
-  while(iter_bpm!=bpmlist.end()){
-    aLog.AddFloatEntry(fStatBuilder.fAverageMap[*iter_bpm].mean*1e6);
-    aLog.AddFloatEntry(fStatBuilder.fAverageMap[*iter_bpm].rms*1e3);
-    iter_bpm++;
-  }
   
   aLog.InsertHorizontalLine();
   aLog.Print();

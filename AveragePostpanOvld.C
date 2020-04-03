@@ -17,7 +17,7 @@ void ReportBeamLineLog(map<Int_t,TaStatBuilder> fSBMap,TaResult& aLog);
 void ReportDetectorLog(TaStatBuilder fSBMap,TaResult& aLog);
 void ReportBeamLineLog(TaStatBuilder fSBMap,TaResult& aLog);
 
-void AveragePostpanCobpm(){
+void AveragePostpanOvld(){
   vector<TString> fDetectorNameList{"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
 				    "reg_asym_us_dd","reg_asym_ds_avg",
 				    "reg_asym_left_dd","reg_asym_right_dd"};
@@ -66,9 +66,9 @@ void AveragePostpanCobpm(){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./rootfiles/prexPrompt_slug%d_cbpm.root",islug);
-    if(islug<=3)
-      file_name = Form("./rootfiles/prexPrompt_slug%d.root",islug);
+    TString file_name = Form("./rootfiles/prexPrompt_slug%d_ovld.root",islug);
+    // if(islug<=3)
+    //   file_name = Form("./rootfiles/prexPrompt_slug%d.root",islug);
     
     TFile* input_file = TFile::Open(file_name);
 
@@ -134,7 +134,7 @@ void AveragePostpanCobpm(){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open("prex_grand_average_regress_cbpm.root","RECREATE");
+  TFile *output_rf =  TFile::Open("prex_grand_average_regress_ovld.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
@@ -142,8 +142,8 @@ void AveragePostpanCobpm(){
   TBranch *fBranchSlug = fSlugTree->Branch("slug",&fSlugID);
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
-  TaResult fSlugLog_md("average_by_slug_maindet_reg_cbpm.log");
-  TaResult fSlugLog_beamline("average_by_slug_beamline_cbpm.log");
+  TaResult fSlugLog_md("average_by_slug_maindet_reg_ovld.log");
+  TaResult fSlugLog_beamline("average_by_slug_beamline_ovld.log");
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
   TString last_wien_state="";
@@ -157,7 +157,7 @@ void AveragePostpanCobpm(){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    (*iter_slug).second.PullFitAllChannels("./plots/reg_cbpm_slug"+slug_label+".pdf");
+    (*iter_slug).second.PullFitAllChannels("./plots/reg_ovld_slug"+slug_label+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fSlugTree->Fill();
     Int_t pittsID = fPittMap[(*iter_slug).first];
@@ -192,7 +192,7 @@ void AveragePostpanCobpm(){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     fPittsStatBuilder.SetLabel(Form("%d",fPittsID));
-    (*iter_pitts).second.PullFitAllChannels(Form("./plots/reg_cbpm_pitts%d.pdf",fPittsID));
+    (*iter_pitts).second.PullFitAllChannels(Form("./plots/reg_ovld_pitts%d.pdf",fPittsID));
     fPittsStatBuilder.UpdateStatBuilder((*iter_pitts).second);
     ((*iter_pitts).second).FillTree(fPittsTree);
     
@@ -202,9 +202,9 @@ void AveragePostpanCobpm(){
     fPittsTree->Fill();
     iter_pitts++;
   }
-  fPittsStatBuilder.PullFitAllChannels("reg_cbpm_pitts_pullfit.pdf");
-  TaResult fPittLog_md("average_by_pitt_maindet_reg_cbpm.log");
-  TaResult fPittLog_beamline("average_by_pitt_beamline_cbpm.log");
+  fPittsStatBuilder.PullFitAllChannels("reg_ovld_pitts_pullfit.pdf");
+  TaResult fPittLog_md("average_by_pitt_maindet_reg_ovld.log");
+  TaResult fPittLog_beamline("average_by_pitt_beamline_ovld.log");
   ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
   ReportBeamLineLog(fPittsStatBuilder,fPittLog_beamline);
 
@@ -217,7 +217,7 @@ void AveragePostpanCobpm(){
   while(iter_wien!=fWienStatBuilderMap.end()){
     fWienID = (*iter_wien).first;
     fWienStatBuilder.SetLabel(Form("%d",fWienID));
-    (*iter_wien).second.PullFitAllChannels(Form("./plots/reg_cbpm_wien%d.pdf",fWienID));
+    (*iter_wien).second.PullFitAllChannels(Form("./plots/reg_ovld_wien%d.pdf",fWienID));
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
     (*iter_wien).second.FillTree(fWienTree);
     
@@ -228,9 +228,9 @@ void AveragePostpanCobpm(){
     iter_wien++;
   }
 
-  fWienStatBuilder.PullFitAllChannels("reg_cbpm_wien_pullfit.pdf");
-  TaResult fWienLog_md("average_by_wien_maindet_reg_cbpm.log");
-  TaResult fWienLog_beamline("average_by_wien_beamline_cbpm.log");
+  fWienStatBuilder.PullFitAllChannels("reg_ovld_wien_pullfit.pdf");
+  TaResult fWienLog_md("average_by_wien_maindet_reg_ovld.log");
+  TaResult fWienLog_beamline("average_by_wien_beamline_ovld.log");
   ReportDetectorLog(fWienStatBuilder,fWienLog_md);
   ReportBeamLineLog(fWienStatBuilder,fWienLog_beamline);
 
