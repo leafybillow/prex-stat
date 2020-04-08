@@ -144,6 +144,12 @@ void TaStatBuilder::UpdateStatBuilder(TaStatBuilder finput ,Int_t sign){
 		   finput.fAverageMap[*iter_dev],sign);
     iter_dev++;
   }
+  if(finput.HasStatBuilderByIHWP()){
+    fStatBuilderByIHWP["IN"].UpdateStatBuilder(finput.GetStatBuilderByIHWP("IN"));
+    fStatBuilderByIHWP["OUT"].UpdateStatBuilder(finput.GetStatBuilderByIHWP("OUT"));
+  }
+  
+  fStatBuilderArray.push_back(finput);
 }
 
 TaStatBuilder TaStatBuilder::GetNullStatBuilder(){
@@ -151,6 +157,60 @@ TaStatBuilder TaStatBuilder::GetNullStatBuilder(){
   TaStatBuilder inStatBuilder = fStatBuilderByIHWP["IN"];
   TaStatBuilder outStatBuilder = fStatBuilderByIHWP["OUT"];
 
+  // No ... I want to re-assemble in and out statbuilder here
+
+  if(inStatBuilder.fAverageMap["Adet"].error> outStatBuilder.fAverageMap["Adet"].error){
+
+    TaStatBuilder fStatBuilderCandidate;
+    vector<TaStatBuilder> fStatBuilderArray = outStatBuilder.GetStatBuilderArray();
+    auto iter_sb = fStatBuilderArray.begin();
+    while(iter_sb!=fStatBuilderArray.end()){
+      if(fStatBuilderCandidate.fAverageMap["Adet"].error==0){
+	fStatBuilderCandidate.UpdateStatBuilder(*iter_sb);
+	iter_sb++;
+	continue;
+      }
+      Double_t dist_old = distance(fStatBuilderCandidate.fAverageMap["Adet"].error,
+				   inStatBuilder.fAverageMap["Adet"].error);
+      Double_t errorbar = 1.0/sqrt( 1.0/pow(fStatBuilderCandidate.fAverageMap["Adet"].error,2)+
+				    1.0/pow((*iter_sb).fAverageMap["Adet"].error,2) );
+      Double_t dist_new = distance(errorbar,
+				   inStatBuilder.fAverageMap["Adet"].error);
+
+      if( dist_new < dist_old)
+	fStatBuilderCandidate.UpdateStatBuilder(*iter_sb);
+      iter_sb++;
+    }
+    fNullStatBuilder.UpdateStatBuilderByIHWP(fStatBuilderCandidate,"OUT");
+    fNullStatBuilder.UpdateStatBuilderByIHWP(inStatBuilder,"IN");
+    // Average stat data get updated at this point but will be refresh afterwards.
+    
+  }else{
+    TaStatBuilder fStatBuilderCandidate;
+    vector<TaStatBuilder> fStatBuilderArray = inStatBuilder.GetStatBuilderArray();
+    auto iter_sb = fStatBuilderArray.begin();
+    while(iter_sb!=fStatBuilderArray.end()){
+      if(fStatBuilderCandidate.fAverageMap["Adet"].error==0){
+	fStatBuilderCandidate.UpdateStatBuilder(*iter_sb);
+	iter_sb++;
+	continue;
+      }
+      Double_t dist_old = distance(fStatBuilderCandidate.fAverageMap["Adet"].error,
+				   outStatBuilder.fAverageMap["Adet"].error);
+      Double_t errorbar = 1.0/sqrt( 1.0/pow(fStatBuilderCandidate.fAverageMap["Adet"].error,2)+
+				    1.0/pow((*iter_sb).fAverageMap["Adet"].error,2) );
+      Double_t dist_new = distance(errorbar,
+				   outStatBuilder.fAverageMap["Adet"].error);
+
+      if( dist_new < dist_old)
+	fStatBuilderCandidate.UpdateStatBuilder(*iter_sb);
+      iter_sb++;
+    }
+    fNullStatBuilder.UpdateStatBuilderByIHWP(fStatBuilderCandidate,"IN");
+    fNullStatBuilder.UpdateStatBuilderByIHWP(outStatBuilder,"OUT");
+  }
+  
+  
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
     if(find(fNullStatBuilder.fDeviceNameList.begin(),
@@ -158,8 +218,8 @@ TaStatBuilder TaStatBuilder::GetNullStatBuilder(){
 	    *iter_dev) == fNullStatBuilder.fDeviceNameList.end())
       fNullStatBuilder.fDeviceNameList.push_back(*iter_dev);
     // FIXME : should be aborted when channel map mismatched
-    fNullStatBuilder.fAverageMap[*iter_dev] = GetNullAverage(inStatBuilder.fAverageMap[*iter_dev],
-							     outStatBuilder.fAverageMap[*iter_dev]);
+    fNullStatBuilder.fAverageMap[*iter_dev] = GetNullAverage(fNullStatBuilder.GetStatBuilderByIHWP("IN").fAverageMap[*iter_dev],fNullStatBuilder.GetStatBuilderByIHWP("OUT").fAverageMap[*iter_dev]);
+
     iter_dev++;
   }
   return fNullStatBuilder;

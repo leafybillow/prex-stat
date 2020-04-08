@@ -169,6 +169,7 @@ void AverageDither(){
   // ReportBeamLineLog(fSlugStatBuilderMap,fSlugLog_beamline);
   
   TaStatBuilder fPittsStatBuilder;
+  TaStatBuilder fPittsNullStatBuilder;
   map<Int_t,TaStatBuilder> fPittsNullStatMap;
   TTree *fPittsTree = new TTree("pitt","Pitts Averages");
   Int_t fPittsID;
@@ -183,11 +184,14 @@ void AverageDither(){
     
     TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
     fPittsNullStatMap[fPittsID] = fNullStat;
+    fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
+    fPittsNullStatBuilder.UpdateStatBuilder(fNullStat);
     fNullStat.FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
     iter_pitts++;
   }
   fPittsStatBuilder.PullFitAllChannels("dit_pitts_pullfit.pdf");
+  fPittsNullStatBuilder.PullFitAllChannels("dit_pitts_null_pullfit.pdf");
   TaResult fPittLog_md("average_by_pitt_maindet_dit.log");
   ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
   // ReportBeamLineLog(fPittsStatBuilderMap,fPittLog_beamline);

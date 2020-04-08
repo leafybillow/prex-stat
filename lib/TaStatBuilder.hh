@@ -55,6 +55,16 @@ public:
   void Process();
   void CalcAverages();
   TaStatBuilder GetNullStatBuilder();
+  Bool_t HasStatBuilderByIHWP(){
+    if(fStatBuilderByIHWP.find("IN")!=fStatBuilderByIHWP.end() &&
+       fStatBuilderByIHWP.find("OUT")!=fStatBuilderByIHWP.end())
+      return kTRUE;
+    else
+      return kFALSE;
+  }
+  TaStatBuilder GetStatBuilderByIHWP(TString ihwp){
+    return fStatBuilderByIHWP[ihwp];
+  };
   
   void LoadRunInfo(TaRunInfo* aRunInfo);
   void UpdateWeightingError(StatData input);
@@ -77,8 +87,16 @@ public:
     return fStatDataArrayMap[name];};
   vector<TString> GetStatDataLabelByName(TString name){
     return fLabelMap[name];};
-  
+
+  StatDataArray GetStatDataArrayByName(TString name,TString ihwp){
+    return  fStatBuilderByIHWP[ihwp].GetStatDataArrayByName(name);};
+  vector<TString> GetStatDataLabelByName(TString name,TString ihwp){
+    return fStatBuilderByIHWP[ihwp].GetStatDataLabelByName(name);};
+  vector<TaStatBuilder> GetStatBuilderArray(){
+    return fStatBuilderArray;
+  };
   vector<TString> fDeviceNameList;
+  
 private:
   Double_t weighting_errorbar;
   Bool_t kUseWeight;
@@ -88,11 +106,13 @@ private:
   map<TString, vector<TString> >fLabelMap;
   TString fLabel_tmp;
   map<TString,TaStatBuilder> fStatBuilderByIHWP;
-
+  vector<TaStatBuilder> fStatBuilderArray;
   //FIXME: NOT in used so far
   vector<TString> fIVNameList; 
   vector<TString> fDVNameList;
-  
+  Double_t distance(Double_t a, Double_t b){
+    return sqrt( fabs(pow(a,2) - pow(b,2)) );
+  }
   ClassDef(TaStatBuilder,0);
 };
 
