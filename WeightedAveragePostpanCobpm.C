@@ -6,10 +6,9 @@
 #include "lib/TaStatBuilder.cc"
 #include "lib/PlotPullFit.C"
 #include "report_utility.cc"
-
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 
-void AveragePostpanCobpm(){
+void WeightedAveragePostpanCobpm(){
   vector<TString> fDetectorNameList{"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
 				    "reg_asym_us_dd","reg_asym_ds_avg",
 				    "reg_asym_left_dd","reg_asym_right_dd"};
@@ -22,18 +21,14 @@ void AveragePostpanCobpm(){
   			       "diff_bpm4aY","diff_bpm4eY",
   			       "diff_bpmE","diff_bpm12X"};
   
-  vector<TString> fBCMNameList={"asym_bcm_an_us","asym_bcm_an_ds",
-				"asym_bcm_an_ds3","asym_bcm_dg_us",
-				"asym_bcm_dg_ds",
-				"reg_asym_bcm_an_us","reg_asym_bcm_an_ds",
-				"reg_asym_bcm_an_ds3","reg_asym_bcm_dg_us",
-				"reg_asym_bcm_dg_ds"};
+  vector<TString> fBCMNameList{"asym_bcm_an_us","asym_bcm_an_ds",
+			       "asym_bcm_an_ds3","asym_bcm_dg_us",
+			       "asym_bcm_dg_ds"};
   
   TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
   
   Int_t nBPM = fBPMNameList.size();
   Int_t nDet = fDetectorNameList.size();
-
   
   map< Int_t,TString> fBCMRunMap = LoadNormalizationMap();
   map< Int_t, TaRunInfo > fRunInfoMap = LoadRunInfoMap();
@@ -58,12 +53,12 @@ void AveragePostpanCobpm(){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
+
     TString file_name = Form("./rootfiles/prexPrompt_slug%d_cbpm.root",islug);
     if(islug<=3)
       file_name = Form("./rootfiles/prexPrompt_slug%d.root",islug);
     
     TFile* input_file = TFile::Open(file_name);
-
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
       continue;
@@ -113,30 +108,13 @@ void AveragePostpanCobpm(){
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_number));
+	fSlugStatBuilderMap[myKey].UpdateWeightingError(fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
 						  fChannelMap["diff_bpm12X"]);
-	fSlugStatBuilderMap[myKey].UpdateStatData("regAq",fChannelMap["reg_"+bcmName]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
-	  if( myRunInfo.GetArmFlag()==1 ){
-	    if((*iter_dev).Contains("l")
-	       || (*iter_dev).Contains("s_avg")
-	       || (*iter_dev).Contains("s_dd") ) {
-	      iter_dev++;
-	      continue;
-	    }
-	  }
-	  if(myRunInfo.GetArmFlag()==2 ){
-	    if((*iter_dev).Contains("r")
-	       || (*iter_dev).Contains("s_avg")
-	       || (*iter_dev).Contains("s_dd") ) {
-	      iter_dev++;
-	      continue;
-	    }
-	  }
-
 	  fSlugStatBuilderMap[myKey].UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
 	  iter_dev++;
 	}
@@ -145,7 +123,7 @@ void AveragePostpanCobpm(){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open("prex_grand_average_regress_cbpm.root","RECREATE");
+  TFile *output_rf =  TFile::Open("prex_grand_weighted_average_regress.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
@@ -153,8 +131,8 @@ void AveragePostpanCobpm(){
   TBranch *fBranchSlug = fSlugTree->Branch("slug",&fSlugID);
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
-  TaResult fSlugLog_md("average_by_slug_maindet_reg_cbpm.log");
-  TaResult fSlugLog_beamline("average_by_slug_beamline_cbpm.log");
+  // TaResult fSlugLog_md("average_by_slug_maindet_reg_reg.log");
+  TaResult fSlugLog_beamline("weighted_average_by_slug_beamline_reg_cbpm.log");
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
   TString last_wien_state="";
@@ -168,7 +146,7 @@ void AveragePostpanCobpm(){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    (*iter_slug).second.PullFitAllChannels("./plots/reg_cbpm_slug"+slug_label+".pdf");
+    // (*iter_slug).second.PullFitAllChannels("./plots/reg_slug"+slug_label+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fSlugTree->Fill();
     Int_t pittsID = fPittMap[(*iter_slug).first];
@@ -191,7 +169,7 @@ void AveragePostpanCobpm(){
     iter_slug++;
   }
   
-  ReportDetectorLog(fSlugStatBuilderMap,fSlugLog_md);
+  // ReportDetectorLog(fSlugStatBuilderMap,fSlugLog_md);
   ReportBeamLineLog(fSlugStatBuilderMap,fSlugLog_beamline);
   
   TaStatBuilder fPittsStatBuilder;
@@ -204,29 +182,34 @@ void AveragePostpanCobpm(){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     fPittsStatBuilder.SetLabel(Form("%d",fPittsID));
-    (*iter_pitts).second.PullFitAllChannels(Form("./plots/reg_cbpm_pitts%d.pdf",fPittsID));
     fPittsStatBuilder.UpdateStatBuilder((*iter_pitts).second);
+    // (*iter_pitts).second.PullFitAllChannels(Form("./plots/reg_pitts%d.pdf",fPittsID));
     ((*iter_pitts).second).FillTree(fPittsTree);
     
-    fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
     TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
     fPittsNullStatMap[fPittsID] = fNullStat;
+    fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
     fPittsNullStatBuilder.UpdateStatBuilder(fNullStat);
     fNullStat.FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
     iter_pitts++;
   }
-  fPittsStatBuilder.PullFitAllChannels("reg_cbpm_pitts_pullfit.pdf");
-  fPittsNullStatBuilder.PullFitAllChannels("reg_cbpm_pitts_null_pullfit.pdf");
-  TaResult fPittLog_md("average_by_pitt_maindet_reg_cbpm.log");
-  TaResult fPittLog_mdnull("null_by_pitt_maindet_reg_cbpm.log");
-  TaResult fPittLog_beamline("average_by_pitt_beamline_cbpm.log");
-  ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
-  ReportDetectorLogByIHWP(fPittsNullStatBuilder,fPittLog_mdnull);
+  // fPittsStatBuilder.PullFitAllChannels("reg_pitts_pullfit.pdf");
+  // TaResult fPittLog_md("average_by_pitt_maindet_reg.log");
+  // ReportDetectorLog(fPittsStatBuilderMap,fPittLog_md);
+  TaResult fPittLog_beamline("weighted_average_by_pitt_beamline_reg_cbpm.log");
   ReportBeamLineLog(fPittsStatBuilder,fPittLog_beamline);
 
+  fPittsNullStatBuilder.PullFitAllChannels("reg_cbpm_pitt_null_pullfit.pdf");
+  TaResult fPittLog_null_beamline("weighted_null_by_pitt_beamline_reg_cbpm.log");
+  ReportBeamLineLog(fPittsNullStatBuilder,fPittLog_null_beamline);
+
+  TaResult fPittLog_null_md("weighted_null_by_pitt_maindet_reg_cbpm.log");
+  ReportDetectorLogByIHWP(fPittsNullStatBuilder,fPittLog_null_md);
+
   TaStatBuilder fWienStatBuilder;
-  map<Int_t,TaStatBuilder> fWienNullStateMap;
+  TaStatBuilder fWienNullStatBuilder;
+  map<Int_t,TaStatBuilder> fWienNullStatMap;
   TTree *fWienTree = new TTree("wien","Wien Averages");
   Int_t fWienID;
   fWienTree->Branch("wien",&fWienID);
@@ -234,23 +217,30 @@ void AveragePostpanCobpm(){
   while(iter_wien!=fWienStatBuilderMap.end()){
     fWienID = (*iter_wien).first;
     fWienStatBuilder.SetLabel(Form("%d",fWienID));
-    (*iter_wien).second.PullFitAllChannels(Form("./plots/reg_cbpm_wien%d.pdf",fWienID));
+    fWienNullStatBuilder.SetLabel(Form("%d",fWienID));
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
+    // (*iter_wien).second.PullFitAllChannels(Form("./plots/reg_wien%d.pdf",fWienID));
     (*iter_wien).second.FillTree(fWienTree);
     
     TaStatBuilder fNullStat = (*iter_wien).second.GetNullStatBuilder();
-    fWienNullStateMap[fWienID] = fNullStat;
+    fWienNullStatMap[fWienID] = fNullStat;
+    fWienNullStatBuilder.UpdateStatBuilder(fNullStat);
     fNullStat.FillTree(fWienTree,"null_");
     fWienTree->Fill();
     iter_wien++;
   }
-
-  fWienStatBuilder.PullFitAllChannels("reg_cbpm_wien_pullfit.pdf");
-  TaResult fWienLog_md("average_by_wien_maindet_reg_cbpm.log");
-  TaResult fWienLog_beamline("average_by_wien_beamline_cbpm.log");
-  ReportDetectorLog(fWienStatBuilder,fWienLog_md);
+  
+  // TaResult fWienLog_md("average_by_wien_maindet_reg.log");
+  //  ReportDetectorLog(fWienStatBuilderMap,fWienLog_md);
+  fWienNullStatBuilder.PullFitAllChannels("reg_cbpm_wien_null_pullfit.pdf");
+  TaResult fWienLog_beamline("weighted_average_by_wien_beamline_reg_cbpm.log");
   ReportBeamLineLog(fWienStatBuilder,fWienLog_beamline);
+  TaResult fWienLog_null_beamline("weighted_null_by_wien_beamline_reg_cbpm.log");
+  ReportBeamLineLog(fWienNullStatBuilder,fWienLog_null_beamline);
+  TaResult fWienLog_null_md("weighted_null_by_wien_maindet_reg_cbpm.log");
+  ReportDetectorLogByIHWP(fWienNullStatBuilder,fWienLog_null_md);
 
+  // fWienStatBuilder.PullFitAllChannels("reg_wien_pullfit.pdf");
   fWienTree->Write();
   fPittsTree->Write();
   fSlugTree->Write();
@@ -276,4 +266,3 @@ void RegisterBranchesAddress(TTree *aTree,
   }
 
 }
-				  
