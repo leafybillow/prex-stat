@@ -243,14 +243,42 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     vector<Double_t> y_rms;
     Double_t fCounter=0;
     Double_t rescale = 1.0;
-    if( (*iter_dev).Contains("asym"))
+    TString unit;
+    TString rms_unit;
+    if( (*iter_dev).Contains("asym")){
       rescale = 1e9;
-    if( (*iter_dev).Contains("Adet"))
+      unit = "(ppb)";
+      rms_unit = "(ppm)";
+    }
+    if( (*iter_dev).Contains("Adet")){
       rescale = 1e9;
-    if( (*iter_dev).Contains("Aq"))
+      unit = "(ppb)";
+      rms_unit = "(ppm)";
+    }
+    if( (*iter_dev).Contains("Aq")){
       rescale = 1e9;
-    if( (*iter_dev).Contains("diff"))
+      unit = "(ppb)";
+      rms_unit = "(ppm)";
+    }
+    if( (*iter_dev).Contains("diff_bpm")){
       rescale = 1e6;
+      unit = "(nm)";
+      rms_unit = "(um)";
+    }
+    
+    if( (*iter_dev).Contains("diff") &&
+	(*iter_dev).Contains("battery")	){
+      rescale = 1e9;
+      unit = "(nV)";
+      rms_unit = "(uV)";
+    }
+    
+    if( (*iter_dev).Contains("diff") &&
+	(*iter_dev).Contains("ch_battery")){
+      rescale = 76e-6*1e9;
+      unit = "(nV)";
+      rms_unit = "(uV)";
+    }
 
     auto iter_data = fStatDataArray.begin();
     while(iter_data!=fStatDataArray.end()){
@@ -269,7 +297,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     gStyle->SetOptFit(1);
 
     c1.Clear();
-    TString title = *iter_dev;
+    TString title = *iter_dev +" " + unit;;
     double ySep = 0.3;
     double xSep = 0.65;
 
@@ -348,10 +376,11 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
 
     c1.Clear();
     TGraph *g_rms =new TGraph(npt,x_array,rms_array);
-    g_rms->SetTitle( *iter_dev+" RMS (ppm)");
+
+    g_rms->SetTitle( *iter_dev+" RMS " +rms_unit);
     TH1F *htrms = g_rms->GetHistogram();
     htrms->GetXaxis()->Set(npt,-0.5,npt-0.5);
-    htrms->GetYaxis()->SetTitle("RMS (ppm)");
+    htrms->GetYaxis()->SetTitle("RMS "+rms_unit);
     for(int ibin=1;ibin<=npt;ibin++)
       htrms->GetXaxis()->SetBinLabel(ibin,fAxisTitle[x_val[ibin-1]]);
     g_rms->SetMarkerStyle(20);
