@@ -5,7 +5,7 @@ void PlotByPolarity_beamoff(){
   TFile* normal_file = TFile::Open("prex_grand_average_beamoff_normal.root");
   TTree *neg_tree = (TTree*)neg_file->Get("slug");
   TTree *pos_tree = (TTree*)pos_file->Get("slug");
-  TTree *normal_tree = (TTree*)pos_file->Get("slug");
+  TTree *normal_tree = (TTree*)normal_file->Get("slug");
   pos_tree->AddFriend(neg_tree,"neg");
 
   vector<TString> fDetectorNameList={"diff_usl","diff_usr","diff_dsl","diff_dsr",
@@ -18,10 +18,12 @@ void PlotByPolarity_beamoff(){
   Int_t nDet = fDetectorNameList.size();
   TCanvas *c1 = new TCanvas("c1","c1",1000,600);
   c1->cd();
-  TPad* p1 = new TPad("p1","",0,0.3,1,1);
+  TPad* p1 = new TPad("p1","",0,0.4,1,1);
   p1->Draw();
-  TPad* p2 = new TPad("p2","",0,0,1,0.3);
+  p1->SetGridy();
+  TPad* p2 = new TPad("p2","",0,0,1,0.4);
   p2->Draw();
+  p2->SetGridy();
   p1->SetBottomMargin(0.0);
   p2->SetTopMargin(0.0);
   TString sign_cut[2] = {"sign>0 ","sign<0"};
@@ -58,8 +60,8 @@ void PlotByPolarity_beamoff(){
       } // JAPAN wiresum: 
       if( device_name.Contains("diff_") &&
 	  (device_name.Contains("bcm") || device_name.Contains("Q")) ){
-	rescale = 1e9; 
-	unit = " (fA)";
+	rescale = 1e6; 
+	unit = " (pA)";
       } 
       if( device_name.Contains("diff") &&
 	  device_name.Contains("battery")){
@@ -80,7 +82,7 @@ void PlotByPolarity_beamoff(){
       TString draw_cmd = Form("%s*%f:%s.error*%f:slug",
 			      device_name.Data(),rescale,
 			      device_name.Data(),rescale);
-      TString channel_cut = Form(" && %s.error>0 ",device_name.Data());
+      TString channel_cut = Form(" && %s.error>0 && slug!=87 ",device_name.Data());
       
       pos_tree->Draw(draw_cmd,sign_cut[iplot]+channel_cut,"goff");
       TGraphErrors *ger_pos = new TGraphErrors(pos_tree->GetSelectedRows(),
@@ -103,10 +105,12 @@ void PlotByPolarity_beamoff(){
       mg->Add(ger_pos,"LP");
       mg->Add(ger_neg,"LP");
       mg->Draw("A");
-      mg->SetTitle(device_name+unit+";slug;"+unit);
+      mg->SetTitle("Beam-Off: "+device_name+unit+";slug;"+unit);
       double y_max = mg->GetYaxis()->GetXmax();
       double y_min = mg->GetYaxis()->GetXmin();
       mg->GetYaxis()->SetRangeUser(y_min, y_max+0.5*(y_max-y_min));
+      // mg->GetXaxis()->SetRangeUser(0,95);
+      mg->GetXaxis()->SetLimits(0,95);
       TLegend *leg = new TLegend(0.9,0.9,0.7,0.7);
       leg->AddEntry(ger_pos,"polarity +");
       leg->AddEntry(ger_neg,"polarity -");
@@ -121,6 +125,9 @@ void PlotByPolarity_beamoff(){
       ger_normal->SetMarkerColor(kBlack);
       ger_normal->SetLineColor(kBlack);
       ger_normal->Draw("ALP");
+      ger_normal->GetXaxis()->SetLimits(0,95);
+      ger_normal->GetXaxis()->SetLabelSize(0.1);
+      ger_normal->GetYaxis()->SetLabelSize(0.05);
       ger_normal->SetTitle("");
       c1->Print("prex_grand_average_"+label[iplot]+"_beamoff.pdf");
     } // end of detector loop
