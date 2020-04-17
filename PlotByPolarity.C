@@ -1,3 +1,4 @@
+#include "device_list.hh"
 void PlotByPolarity(){
   gStyle->SetOptFit(1);
   TFile* neg_file = TFile::Open("prex_grand_average_neg.root");
@@ -6,21 +7,7 @@ void PlotByPolarity(){
   TTree *pos_tree = (TTree*)pos_file->Get("slug");
   pos_tree->AddFriend(neg_tree,"neg");
 
-  vector<TString> fDetectorNameList={"Adet",
-				     "reg_asym_us_avg","reg_asym_us_dd","reg_asym_usl","reg_asym_usr",
-				     "asym_us_avg","asym_us_dd","asym_usl","asym_usr",
-				     "reg_asym_ds_avg","reg_asym_ds_dd","reg_asym_dsl","reg_asym_dsr",
-				     "asym_ds_avg","asym_ds_dd","asym_dsl","asym_dsr",
-				     "diff_bpm4aX","diff_bpm4eX","diff_bpm4aY","diff_bpm4eY",
-				     "diff_bpm11X","diff_bpm12X","diff_bpmE",
-				     "asym_bcm_an_us","asym_bcm_an_ds",
-				     "asym_bcm_dg_us","asym_bcm_dg_ds",
-				     "asym_battery1l","asym_battery2l",
-				     "asym_battery1r","asym_battery2r",
-				     "asym_ch_battery_1","asym_ch_battery_2",
-				     "diff_battery1l","diff_battery2l",
-				     "diff_battery1r","diff_battery2r",
-				     "diff_ch_battery_1","diff_ch_battery_2" };
+  vector<TString> fDetectorNameList=device_list;
   Int_t nDet = fDetectorNameList.size();
   TCanvas *c1 = new TCanvas("c1","c1",1000,600);
   
