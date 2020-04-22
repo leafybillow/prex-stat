@@ -35,7 +35,7 @@ void AverageBeamOffByPolarity(Int_t polarity){
 				     "yield_cav4cQ","yield_bcm_an_ds3"};
 
   Int_t nDet = fDetectorNameList.size();
-  
+  map< Int_t,TString> fBCMRunMap = LoadNormalizationMap();  
   map< Int_t, TaRunInfo > fRunInfoMap = LoadRunInfoMap();
   map<SLUG_ARM,Int_t> fPittMap = LoadPittsMap();
   map<SLUG_ARM,pair<TString,TString> > fSlugInfoMap;
@@ -87,6 +87,13 @@ void AverageBeamOffByPolarity(Int_t polarity){
 	myRunInfo = fRunInfoMap[run_number];
 	myKey = make_pair(myRunInfo.GetSlugNumber(),
 			  myRunInfo.GetArmFlag());
+	if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
+	  cerr << "-- normalizing BCM info not found for run  "
+	       << run_number << endl;
+	  continue;  // FIXME
+	}else
+	  bcmName = "diff_"+fBCMRunMap[run_number];
+
 	last_run_number = run_number;
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder fStatBuilder;
@@ -98,7 +105,7 @@ void AverageBeamOffByPolarity(Int_t polarity){
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
-	// fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
+	fSlugStatBuilderMap[myKey].UpdateStatData("diff_bcm_norm",fChannelMap[bcmName]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  
