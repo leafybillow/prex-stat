@@ -8,10 +8,11 @@ void PlotByPolarity(){
   pos_tree->AddFriend(neg_tree,"neg");
 
   vector<TString> fDetectorNameList=device_list;
+    
   Int_t nDet = fDetectorNameList.size();
   TCanvas *c1 = new TCanvas("c1","c1",1000,600);
   
-  TString sign_cut[2] = {"sign>0","sign<0"};
+  TString sign_cut[2] = {"sign>0 && slug!=12","sign<0 && slug!=13"};
   TString label[2] = {"left_out_right_in","left_in_right_out"};
   for(int iplot=0;iplot<2;iplot++){
     c1->cd();
@@ -54,7 +55,8 @@ void PlotByPolarity(){
 			      device_name.Data(),rescale,
 			      device_name.Data(),rescale);
       TString channel_cut = Form(" && %s.error>0",device_name.Data());
-      
+      if(device_name.Contains("bcm_an"))
+	 channel_cut += "&& !(slug>=13 && slug<=21)";
       pos_tree->Draw(draw_cmd,sign_cut[iplot]+channel_cut,"goff");
       TGraphErrors *ger_pos = new TGraphErrors(pos_tree->GetSelectedRows(),
 					       pos_tree->GetV3(),pos_tree->GetV1(),
@@ -78,7 +80,7 @@ void PlotByPolarity(){
       mg->SetTitle(device_name+unit+";slug;"+unit);
       double y_max = mg->GetYaxis()->GetXmax();
       double y_min = mg->GetYaxis()->GetXmin();
-      mg->GetYaxis()->SetRangeUser(y_min, y_max+0.5*(y_max-y_min));
+      mg->GetYaxis()->SetRangeUser(y_min, y_max+0.33*(y_max-y_min));
       TLegend *leg = new TLegend(0.9,0.9,0.7,0.7);
       leg->AddEntry(ger_pos,"polarity +");
       leg->AddEntry(ger_neg,"polarity -");
