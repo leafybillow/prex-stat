@@ -8,12 +8,12 @@
 #include "report_utility.cc"
 
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
-void AverageByBlock(Int_t block_id);
-void AverageByBlock(){
+void WeightedAverageByBlock(Int_t block_id);
+void WeightedAverageByBlock(){
   for(int i=0;i<4;i++)
-    AverageByBlock(i);
+    WeightedAverageByBlock(i);
 }
-void AverageByBlock(Int_t block_id){
+void WeightedAverageByBlock(Int_t block_id){
   TString tree_name = Form("block%d",block_id);
   vector<TString> fDetectorNameList={"asym_bcm_an_us","asym_bcm_an_ds",
 				     "asym_bcm_an_ds3","asym_bcm_dg_us",
@@ -106,6 +106,7 @@ void AverageByBlock(Int_t block_id){
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
+	fSlugStatBuilderMap[myKey].UpdateWeightingError(fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet"+dot_suffix,fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Aq"+dot_suffix,fChannelMap[bcmName]);
 	auto iter_dev = fDeviceNameList.begin();
@@ -138,7 +139,7 @@ void AverageByBlock(Int_t block_id){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open(Form("prex_grand_average_%s.root",tree_name.Data()),"RECREATE");
+  TFile *output_rf =  TFile::Open(Form("prex_grand_average_%s_weighted.root",tree_name.Data()),"RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;

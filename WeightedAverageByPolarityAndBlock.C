@@ -6,32 +6,47 @@
 #include "lib/TaStatBuilder.cc"
 #include "lib/PlotPullFit.C"
 #include "report_utility.cc"
-
+#include "device_list.hh"
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
-void AverageByBlock(Int_t block_id);
-void AverageByBlock(){
-  for(int i=0;i<4;i++)
-    AverageByBlock(i);
+void WeightedAverageByPolarityAndBlock(Int_t polarity,Int_t iblk);
+
+void WeightedAverageByPolarityAndBlock(){
+  for(int iblk=0;iblk<4;iblk++){
+    WeightedAverageByPolarityAndBlock(1,iblk);
+    WeightedAverageByPolarityAndBlock(-1,iblk);
+    WeightedAverageByPolarityAndBlock(0,iblk);
+  }
 }
-void AverageByBlock(Int_t block_id){
-  TString tree_name = Form("block%d",block_id);
-  vector<TString> fDetectorNameList={"asym_bcm_an_us","asym_bcm_an_ds",
-				     "asym_bcm_an_ds3","asym_bcm_dg_us",
-				     "asym_bcm_dg_ds",
+
+void WeightedAverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
+  TString tree_name;
+  if(polarity==1)
+    tree_name = "pos";
+  if(polarity==-1)
+    tree_name = "neg";
+  else if(polarity==0)
+    tree_name ="neutral";
+  
+  vector<TString> fDetectorNameList={"reg_asym_us_avg","reg_asym_us_dd","reg_asym_usl","reg_asym_usr",
+				     "asym_us_avg","asym_us_dd","asym_usl","asym_usr",
+				     "reg_corr_asym_us_avg","reg_corr_asym_us_dd",
+				     "reg_corr_asym_usl","reg_corr_asym_usr",
+				     "asym_bcm_an_us","asym_bcm_an_ds","asym_bcm_an_ds3",
+				     "asym_bcm_dg_us","asym_bcm_dg_ds","asym_cav4cQ",
 				     "asym_bpm4aWS","asym_bpm4eWS",
+				     "asym_bpm11WS","asym_bpm12WS","asym_bpm1WS",
+				     "diff_bpm4aX","diff_bpm4eX",
+				     "diff_bpm4aY","diff_bpm4eY","diff_bpmE",
 				     "asym_battery1l","asym_battery2l","asym_battery1r","asym_battery2r",
 				     "asym_ch_battery_1","asym_ch_battery_2",
 				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r",
-				     "diff_ch_battery_1","diff_ch_battery_2",
-				     "asym_us_avg","asym_usr","asym_usl","asym_us_dd",
-				     "reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
-				     "reg_asym_us_dd"};
+				     "diff_ch_battery_1","diff_ch_battery_2"};
+
 
 
   TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
-  
   Int_t nDet = fDetectorNameList.size();
-  TString dot_suffix = Form(".block%d",block_id);
+  TString dot_suffix = Form(".block%d",iblk);
   for(int idet=0;idet<nDet;idet++){
     fDetectorNameList[idet]+= dot_suffix;
   }
@@ -54,13 +69,13 @@ void AverageByBlock(Int_t block_id){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block.root",islug);
+    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block_by_polarity_quick2.root",islug);
     TFile* input_file = TFile::Open(file_name);
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
       continue;
     }
-    TTree* burst_tree = (TTree*)input_file->Get("T");
+    TTree* burst_tree = (TTree*)input_file->Get(tree_name);
     if(burst_tree==NULL){
       cerr << " Error: Mul Tree not found in "
 	   << file_name << endl;
@@ -88,6 +103,7 @@ void AverageByBlock(Int_t block_id){
 	myKey = make_pair(myRunInfo.GetSlugNumber(),
 			  myRunInfo.GetArmFlag());
 	detName = arm_switch[myRunInfo.GetArmFlag()]+dot_suffix;
+	
 	if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
 	  cerr << "-- normalizing BCM info not found for run  "
 	       << run_number << endl;
@@ -106,8 +122,12 @@ void AverageByBlock(Int_t block_id){
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
+	fSlugStatBuilderMap[myKey].UpdateWeightingError(fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet"+dot_suffix,fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Aq"+dot_suffix,fChannelMap[bcmName]);
+	fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE"+dot_suffix,
+						  fChannelMap["diff_bpm12X"+dot_suffix]);
+
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  
@@ -138,7 +158,7 @@ void AverageByBlock(Int_t block_id){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open(Form("prex_grand_average_%s.root",tree_name.Data()),"RECREATE");
+  TFile *output_rf =  TFile::Open(Form("prex_grand_average_%s_weighted.root",(tree_name+dot_suffix).Data()),"RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
@@ -150,7 +170,7 @@ void AverageByBlock(Int_t block_id){
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
   TBranch *fBranchWien = fSlugTree->Branch("wien",&fWien);
   TBranch *fBranchIHWP = fSlugTree->Branch("ihwp",&fIHWP);
-  TaResult fSlugLog_md("average_by_slug_"+tree_name+".log");
+  TaResult fSlugLog_md("weighted_average_by_slug_"+(tree_name+dot_suffix)+".log");
   // TaResult fSlugLog_beamline("average_by_slug_beamline.log");
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
@@ -165,7 +185,9 @@ void AverageByBlock(Int_t block_id){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+"_"+tree_name+".pdf");
+    if(polarity==0)
+      fSign=1.0;
+    (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+"_"+(tree_name+dot_suffix)+"_weighted.pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fWien = wienID;
     fIHWP = (fSlugInfoMap[(*iter_slug).first]).first;
@@ -203,56 +225,56 @@ void AverageByBlock(Int_t block_id){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     fPittsStatBuilder.SetLabel(Form("%d",fPittsID));
-    (*iter_pitts).second.PullFitAllChannels(Form("./plots/pitts%d_%s.pdf",
-						 fPittsID,tree_name.Data()));
+    (*iter_pitts).second.PullFitAllChannels(Form("./plots/pitts%d_%s_weighted.pdf",
+						 fPittsID,(tree_name+dot_suffix).Data()));
     fPittsStatBuilder.UpdateStatBuilder((*iter_pitts).second);
     ((*iter_pitts).second).FillTree(fPittsTree);
     
-    TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
-    fPittNullStatBuilder.SetLabel(Form("%d",fPittsID));
-    fPittNullStatBuilder.UpdateStatBuilder(fNullStat);
-    fPittsNullStatMap[fPittsID] = fNullStat;
-    fNullStat.FillTree(fPittsTree,"null_");
-    fPittsTree->Fill();
-    iter_pitts++;
-  }
-  fPittsStatBuilder.PullFitAllChannels(tree_name+"_pitts_pullfit.pdf");
-  fPittNullStatBuilder.PullFitAllChannels(tree_name+"_pitt_null_pullfit.pdf");
-  // TaResult fPittLog_md("average_by_pitt_maindet_dit.log");
-  // ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
-  // ReportBeamLineLog(fPittsStatBuilderMap,fPittLog_beamline);
-  // TaResult fPittLog_beamline("average_by_pitt_beamline.log");
-  TaStatBuilder fWienStatBuilder;
-  map<Int_t,TaStatBuilder> fWienNullStateMap;
-  TTree *fWienTree = new TTree("wien","Wien Averages");
-  Int_t fWienID;
-  fWienTree->Branch("wien",&fWienID);
-  auto iter_wien = fWienStatBuilderMap.begin();
-  while(iter_wien!=fWienStatBuilderMap.end()){
-    fWienID = (*iter_wien).first;
-    cout << fWienID << endl;
-    fWienStatBuilder.SetLabel(Form("%d",fWienID));
-    (*iter_wien).second.PullFitAllChannels(Form("./plots/wien%d_%s.pdf",fWienID,tree_name.Data()));
-    fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
-    (*iter_wien).second.FillTree(fWienTree);
+TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
+  fPittNullStatBuilder.SetLabel(Form("%d",fPittsID));
+  fPittNullStatBuilder.UpdateStatBuilder(fNullStat);
+  fPittsNullStatMap[fPittsID] = fNullStat;
+  fNullStat.FillTree(fPittsTree,"null_");
+  fPittsTree->Fill();
+  iter_pitts++;
+ }
+fPittsStatBuilder.PullFitAllChannels((tree_name+dot_suffix)+"_pitts_pullfit_weighted.pdf");
+fPittNullStatBuilder.PullFitAllChannels((tree_name+dot_suffix)+"_pitt_null_pullfit_weighted.pdf");
+// TaResult fPittLog_md("average_by_pitt_maindet_dit.log");
+// ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
+// ReportBeamLineLog(fPittsStatBuilderMap,fPittLog_beamline);
+// TaResult fPittLog_beamline("average_by_pitt_beamline.log");
+TaStatBuilder fWienStatBuilder;
+map<Int_t,TaStatBuilder> fWienNullStateMap;
+TTree *fWienTree = new TTree("wien","Wien Averages");
+Int_t fWienID;
+fWienTree->Branch("wien",&fWienID);
+auto iter_wien = fWienStatBuilderMap.begin();
+while(iter_wien!=fWienStatBuilderMap.end()){
+  fWienID = (*iter_wien).first;
+  cout << fWienID << endl;
+  fWienStatBuilder.SetLabel(Form("%d",fWienID));
+  (*iter_wien).second.PullFitAllChannels(Form("./plots/wien%d_%s_weighted.pdf",fWienID,(tree_name+dot_suffix).Data()));
+  fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
+  (*iter_wien).second.FillTree(fWienTree);
     
-    TaStatBuilder fNullStat = (*iter_wien).second.GetNullStatBuilder();
-    fWienNullStateMap[fWienID] = fNullStat;
-    fNullStat.FillTree(fWienTree,"null_");
-    fWienTree->Fill();
-    iter_wien++;
-  }
+  TaStatBuilder fNullStat = (*iter_wien).second.GetNullStatBuilder();
+  fWienNullStateMap[fWienID] = fNullStat;
+  fNullStat.FillTree(fWienTree,"null_");
+  fWienTree->Fill();
+  iter_wien++;
+ }
   
-  // TaResult fWienLog_beamline("average_by_wien_beamline.log"); // 
-  // ReportBeamLineLog(fWienStatBuilderMap,fWienLog_beamline);
-  fWienStatBuilder.PullFitAllChannels(tree_name+"_wien_pullfit.pdf");
-  // TaResult fWienLog_md("average_by_wien_maindet_dit.log");
-  // ReportDetectorLog(fWienStatBuilder,fWienLog_md);
+// TaResult fWienLog_beamline("average_by_wien_beamline.log"); // 
+// ReportBeamLineLog(fWienStatBuilderMap,fWienLog_beamline);
+fWienStatBuilder.PullFitAllChannels((tree_name+dot_suffix)+"_wien_pullfit_weighted.pdf");
+// TaResult fWienLog_md("average_by_wien_maindet_dit.log");
+// ReportDetectorLog(fWienStatBuilder,fWienLog_md);
 
-  fWienTree->Write();
-  fPittsTree->Write();
-  fSlugTree->Write();
-  output_rf->Close();
+fWienTree->Write();
+fPittsTree->Write();
+fSlugTree->Write();
+output_rf->Close();
 }
 
 void RegisterBranchesAddress(TTree *aTree,
