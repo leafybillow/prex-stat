@@ -1,50 +1,52 @@
-void PlotAqByBlockByPolarity(){
+void PlotByBlockByPolarity_weighted(){
   gStyle->SetOptFit(1);
-  TFile* block0_pos_file = TFile::Open("prex_grand_average_pos.block0.root");
+  TFile* block0_pos_file = TFile::Open("prex_grand_average_pos.block0_weighted.root");
   TTree *block0_pos_tree = (TTree*)block0_pos_file->Get("slug");
-  TFile* block0_neg_file = TFile::Open("prex_grand_average_neg.block0.root");
+  TFile* block0_neg_file = TFile::Open("prex_grand_average_neg.block0_weighted.root");
   TTree *block0_neg_tree = (TTree*)block0_neg_file->Get("slug");
   
-  TFile* block1_pos_file = TFile::Open("prex_grand_average_pos.block1.root");
+  TFile* block1_pos_file = TFile::Open("prex_grand_average_pos.block1_weighted.root");
   TTree *block1_pos_tree = (TTree*)block1_pos_file->Get("slug");
-  TFile* block1_neg_file = TFile::Open("prex_grand_average_neg.block1.root");
+  TFile* block1_neg_file = TFile::Open("prex_grand_average_neg.block1_weighted.root");
   TTree *block1_neg_tree = (TTree*)block1_neg_file->Get("slug");
 
-  TFile* block2_pos_file = TFile::Open("prex_grand_average_pos.block2.root");
+  TFile* block2_pos_file = TFile::Open("prex_grand_average_pos.block2_weighted.root");
   TTree *block2_pos_tree = (TTree*)block2_pos_file->Get("slug");
-  TFile* block2_neg_file = TFile::Open("prex_grand_average_neg.block2.root");
+  TFile* block2_neg_file = TFile::Open("prex_grand_average_neg.block2_weighted.root");
   TTree *block2_neg_tree = (TTree*)block2_neg_file->Get("slug");
 
-  TFile* block3_pos_file = TFile::Open("prex_grand_average_pos.block3.root");
+  TFile* block3_pos_file = TFile::Open("prex_grand_average_pos.block3_weighted.root");
   TTree *block3_pos_tree = (TTree*)block3_pos_file->Get("slug");
-  TFile* block3_neg_file = TFile::Open("prex_grand_average_neg.block3.root");
+  TFile* block3_neg_file = TFile::Open("prex_grand_average_neg.block3_weighted.root");
   TTree *block3_neg_tree = (TTree*)block3_neg_file->Get("slug");
-  
-  TFile* block0_file = TFile::Open("prex_grand_average_block0_newReg.root");
+
+  TFile* block0_file = TFile::Open("prex_grand_average_block0_newReg_weighted.root");
   TTree *block0_tree = (TTree*)block0_file->Get("slug");
-  block0_tree->AddFriend("slug","prex_grand_average_block0.root");
-  TFile* block1_file = TFile::Open("prex_grand_average_block1_newReg.root");
+  block0_tree->AddFriend("slug","prex_grand_average_block0_weighted.root");
+  TFile* block1_file = TFile::Open("prex_grand_average_block1_newReg_weighted.root");
   TTree *block1_tree = (TTree*)block1_file->Get("slug");
-  block1_tree->AddFriend("slug","prex_grand_average_block1.root");
-  TFile* block2_file = TFile::Open("prex_grand_average_block2_newReg.root");
+  block1_tree->AddFriend("slug","prex_grand_average_block1_weighted.root");
+  TFile* block2_file = TFile::Open("prex_grand_average_block2_newReg_weighted.root");
   TTree *block2_tree = (TTree*)block2_file->Get("slug");
-  block2_tree->AddFriend("slug","prex_grand_average_block2.root");
-  TFile* block3_file = TFile::Open("prex_grand_average_block3_newReg.root");
+  block2_tree->AddFriend("slug","prex_grand_average_block2_weighted.root");
+  TFile* block3_file = TFile::Open("prex_grand_average_block3_newReg_weighted.root");
   TTree *block3_tree = (TTree*)block3_file->Get("slug");
-  block3_tree->AddFriend("slug","prex_grand_average_block3.root");
+  block3_tree->AddFriend("slug","prex_grand_average_block3_weighted.root");
+
   TTree* fTreeArray[4] = {block0_tree,block1_tree,block2_tree,block3_tree};
   
-  vector<TString> fDetectorNameList={"asym_bcm_an_us","asym_bcm_an_ds",
+  vector<TString> fDetectorNameList={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
+				     "reg_asym_us_dd",
+				     "asym_us_avg","asym_usr","asym_usl",
+				     "asym_us_dd",
+				     "asym_bcm_an_us","asym_bcm_an_ds",
   				     "asym_bcm_an_ds3","asym_bcm_dg_us",
   				     "asym_bcm_dg_ds","asym_cav4cQ",
-				     "asym_bpm4aWS","asym_bpm4eWS",
-				     "diff_ch_battery_1","diff_ch_battery_2",
 				     "diff_bpm4aX","diff_bpm4eX",
 				     "diff_bpm4aY","diff_bpm4eY",
 				     "diff_bpmE",
-				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r"};
-
-
+  				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r",
+				     "diff_ch_battery_1","diff_ch_battery_2"};
 
   TTree* fPosTreeArray[4] = {block0_pos_tree,block1_pos_tree,block2_pos_tree,block3_pos_tree};
   TTree* fNegTreeArray[4] = {block0_neg_tree,block1_neg_tree,block2_neg_tree,block3_neg_tree};
@@ -65,13 +67,14 @@ void PlotAqByBlockByPolarity(){
   c2->cd(4);
   gPad->SetRightMargin(0.0);
   gPad->SetBottomMargin(0.05);
-  TString sign_cut[] = {"ihwp==\"IN\"","ihwp==\"OUT\""};
-  TString label[] = {"ihwp_in","ihwp_out"};
+  
+  TString sign_cut[2] = {"sign>0 && slug!=12","sign<0 && slug!=13"};
+  TString label[2] = {"left_out_right_in","left_in_right_out"};
 
   Int_t nplots = sizeof(sign_cut)/sizeof(*sign_cut);
   for(int iplot=0;iplot<nplots;iplot++){
     c1->cd();
-    c1->Print("prex_grand_average_byblock_"+label[iplot]+".pdf[");
+    c1->Print("prex_grand_average_byblock_"+label[iplot]+"_weighted.pdf[");
     for(int idet=0;idet<nDet;idet++){
       c1->Clear("D");
 
@@ -128,6 +131,7 @@ void PlotAqByBlockByPolarity(){
 			  device_name.Data(),iblk,rescale);
 	  channel_cut = Form(" && %s.block%d.error>0",device_name.Data(),iblk);
 	}
+
 	if(device_name.Contains("bcm_an"))
 	  channel_cut += "&& !(slug>=13 && slug<=21)";
 
@@ -181,7 +185,7 @@ void PlotAqByBlockByPolarity(){
 	ps1->Draw("same");
 	// f2->Draw("same");
       }
-      c1->Print("prex_grand_average_byblock_"+label[iplot]+".pdf");
+      c1->Print("prex_grand_average_byblock_"+label[iplot]+"_weighted.pdf");
       
       // for(int iblk=0;iblk<4;iblk++){
       // 	draw_cmd = Form("%s.block%d*%f:%s.block%d.error*%f:slug",
@@ -225,11 +229,11 @@ void PlotAqByBlockByPolarity(){
       // leg_pos->Draw("same");
       // leg_neg->Draw("same");
       // c1->Print("prex_grand_average_byblock_"+label[iplot]+".pdf");
-      c2->Clear("D");
+      
       for(int iblk=0;iblk<4;iblk++){
 	c2->cd(iblk+1);
 	TMultiGraph *mg_in_block = new TMultiGraph();
-	TLegend *leg_block = new TLegend(0.9,0.6,1.0,0.9);
+	TLegend *leg_block = new TLegend(0.9,0.6,1.0,0.9);	
 	draw_cmd = Form("%s.block%d*%f:%s.block%d.error*%f:slug",
 			device_name.Data(),iblk,rescale,
 			device_name.Data(),iblk,rescale);
@@ -322,10 +326,10 @@ void PlotAqByBlockByPolarity(){
 	leg_block->AddEntry(ger_neg_block,"neg");
 	leg_block->Draw("same");
       }
-      c2->Print("prex_grand_average_byblock_"+label[iplot]+".pdf");
+      c2->Print("prex_grand_average_byblock_"+label[iplot]+"_weighted.pdf");
 
     }
-    c1->Print("prex_grand_average_byblock_"+label[iplot]+".pdf]");
+    c1->Print("prex_grand_average_byblock_"+label[iplot]+"_weighted.pdf]");
     // c2->Print("prex_grand_average_byblock_"+label[iplot]+".pdf]");
   }
 }

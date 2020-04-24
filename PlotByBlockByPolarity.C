@@ -19,15 +19,20 @@ void PlotByBlockByPolarity(){
   TTree *block3_pos_tree = (TTree*)block3_pos_file->Get("slug");
   TFile* block3_neg_file = TFile::Open("prex_grand_average_neg.block3.root");
   TTree *block3_neg_tree = (TTree*)block3_neg_file->Get("slug");
-  
+
   TFile* block0_file = TFile::Open("prex_grand_average_block0_newReg.root");
   TTree *block0_tree = (TTree*)block0_file->Get("slug");
+  block0_tree->AddFriend("slug","prex_grand_average_block0.root");
   TFile* block1_file = TFile::Open("prex_grand_average_block1_newReg.root");
   TTree *block1_tree = (TTree*)block1_file->Get("slug");
+  block1_tree->AddFriend("slug","prex_grand_average_block1.root");
   TFile* block2_file = TFile::Open("prex_grand_average_block2_newReg.root");
   TTree *block2_tree = (TTree*)block2_file->Get("slug");
+  block2_tree->AddFriend("slug","prex_grand_average_block2.root");
   TFile* block3_file = TFile::Open("prex_grand_average_block3_newReg.root");
   TTree *block3_tree = (TTree*)block3_file->Get("slug");
+  block3_tree->AddFriend("slug","prex_grand_average_block3.root");
+
   TTree* fTreeArray[4] = {block0_tree,block1_tree,block2_tree,block3_tree};
   
   vector<TString> fDetectorNameList={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
@@ -39,7 +44,10 @@ void PlotByBlockByPolarity(){
   				     "asym_bcm_dg_ds","asym_cav4cQ",
 				     "diff_bpm4aX","diff_bpm4eX",
 				     "diff_bpm4aY","diff_bpm4eY",
-				     "diff_bpmE"};
+				     "diff_bpmE",
+  				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r",
+				     "diff_ch_battery_1","diff_ch_battery_2"};
+
   TTree* fPosTreeArray[4] = {block0_pos_tree,block1_pos_tree,block2_pos_tree,block3_pos_tree};
   TTree* fNegTreeArray[4] = {block0_neg_tree,block1_neg_tree,block2_neg_tree,block3_neg_tree};
   Color_t fColor[4]={kBlack,kBlue,kRed,kMagenta};
@@ -117,6 +125,13 @@ void PlotByBlockByPolarity(){
 			device_name.Data(),iblk,rescale,
 			device_name.Data(),iblk,rescale);
 	channel_cut = Form(" && %s_block%d.error>0",device_name.Data(),iblk);
+	if(device_name.Contains("battery") || device_name.Contains("WS")){
+	  draw_cmd = Form("%s.block%d*%f:%s.block%d.error*%f:slug",
+			  device_name.Data(),iblk,rescale,
+			  device_name.Data(),iblk,rescale);
+	  channel_cut = Form(" && %s.block%d.error>0",device_name.Data(),iblk);
+	}
+
 	if(device_name.Contains("bcm_an"))
 	  channel_cut += "&& !(slug>=13 && slug<=21)";
 
