@@ -27,22 +27,7 @@ void AverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
   else if(polarity==0)
     tree_name ="neutral";
   
-  vector<TString> fDetectorNameList={"reg_asym_us_avg","reg_asym_us_dd","reg_asym_usl","reg_asym_usr",
-				     "asym_us_avg","asym_us_dd","asym_usl","asym_usr",
-				     "reg_corr_asym_us_avg","reg_corr_asym_us_dd",
-				     "reg_corr_asym_usl","reg_corr_asym_usr",
-				     "asym_bcm_an_us","asym_bcm_an_ds","asym_bcm_an_ds3",
-				     "asym_bcm_dg_us","asym_bcm_dg_ds","asym_cav4cQ",
-				     "asym_bpm4aWS","asym_bpm4eWS",
-				     "asym_bpm11WS","asym_bpm12WS","asym_bpm1WS",
-				     "diff_bpm4aX","diff_bpm4eX",
-				     "diff_bpm4aY","diff_bpm4eY","diff_bpmE",
-				     "asym_battery1l","asym_battery2l","asym_battery1r","asym_battery2r",
-				     "asym_ch_battery_1","asym_ch_battery_2",
-				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r",
-				     "diff_ch_battery_1","diff_ch_battery_2"};
-
-
+  vector<TString> fDetectorNameList=device_list;
 
   TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
   Int_t nDet = fDetectorNameList.size();
