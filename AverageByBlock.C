@@ -6,7 +6,7 @@
 #include "lib/TaStatBuilder.cc"
 #include "lib/PlotPullFit.C"
 #include "report_utility.cc"
-
+#include "device_list.hh"
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 void AverageByBlock(Int_t block_id);
 void AverageByBlock(){
@@ -15,19 +15,7 @@ void AverageByBlock(){
 }
 void AverageByBlock(Int_t block_id){
   TString tree_name = Form("block%d",block_id);
-  vector<TString> fDetectorNameList={"asym_bcm_an_us","asym_bcm_an_ds",
-				     "asym_bcm_an_ds3","asym_bcm_dg_us",
-				     "asym_bcm_dg_ds",
-				     "asym_bpm4aWS","asym_bpm4eWS",
-				     "asym_battery1l","asym_battery2l","asym_battery1r","asym_battery2r",
-				     "asym_ch_battery_1","asym_ch_battery_2",
-				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r",
-				     "diff_ch_battery_1","diff_ch_battery_2",
-				     "asym_us_avg","asym_usr","asym_usl","asym_us_dd",
-				     "reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
-				     "reg_asym_us_dd"};
-
-
+  vector<TString> fDetectorNameList=device_list;
   TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
   
   Int_t nDet = fDetectorNameList.size();
@@ -54,7 +42,7 @@ void AverageByBlock(Int_t block_id){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block.root",islug);
+    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block_new.root",islug);
     TFile* input_file = TFile::Open(file_name);
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;

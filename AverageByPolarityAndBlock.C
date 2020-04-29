@@ -9,13 +9,18 @@
 #include "device_list.hh"
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 void AverageByPolarityAndBlock(Int_t polarity,Int_t iblk);
+void AverageByPolarityAndBlock(Int_t iblk);
 
-void AverageByPolarityAndBlock(){
-  for(int iblk=0;iblk<4;iblk++){
+void AverageByPolarityAndBlock(Int_t iblk){
     AverageByPolarityAndBlock(1,iblk);
     AverageByPolarityAndBlock(-1,iblk);
     AverageByPolarityAndBlock(0,iblk);
-  }
+    // AverageByPolarityAndBlock(2,iblk);
+}
+
+void AverageByPolarityAndBlock(){
+  for(int iblk=0;iblk<4;iblk++)
+    AverageByPolarityAndBlock(iblk);
 }
 
 void AverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
@@ -24,8 +29,10 @@ void AverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
     tree_name = "pos";
   if(polarity==-1)
     tree_name = "neg";
-  else if(polarity==0)
+  if(polarity==0)
     tree_name ="neutral";
+  if(polarity==2)
+    tree_name ="normal";
   
   vector<TString> fDetectorNameList=device_list;
 
@@ -54,7 +61,7 @@ void AverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block_by_polarity_quick2.root",islug);
+    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block_by_polarity_new.root",islug);
     TFile* input_file = TFile::Open(file_name);
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
