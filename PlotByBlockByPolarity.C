@@ -1,3 +1,4 @@
+#include "device_list.hh"
 void PlotByBlockByPolarity(){
   gStyle->SetOptFit(1);
   TFile* block0_pos_file = TFile::Open("prex_grand_average_pos.block0.root");
@@ -20,34 +21,21 @@ void PlotByBlockByPolarity(){
   TFile* block3_neg_file = TFile::Open("prex_grand_average_neg.block3.root");
   TTree *block3_neg_tree = (TTree*)block3_neg_file->Get("slug");
 
-  TFile* block0_file = TFile::Open("prex_grand_average_block0_newReg.root");
+  TFile* block0_file = TFile::Open("prex_grand_average_block0.root");
   TTree *block0_tree = (TTree*)block0_file->Get("slug");
-  block0_tree->AddFriend("slug","prex_grand_average_block0.root");
-  TFile* block1_file = TFile::Open("prex_grand_average_block1_newReg.root");
+  
+  TFile* block1_file = TFile::Open("prex_grand_average_block1.root");
   TTree *block1_tree = (TTree*)block1_file->Get("slug");
-  block1_tree->AddFriend("slug","prex_grand_average_block1.root");
-  TFile* block2_file = TFile::Open("prex_grand_average_block2_newReg.root");
+  
+  TFile* block2_file = TFile::Open("prex_grand_average_block2.root");
   TTree *block2_tree = (TTree*)block2_file->Get("slug");
-  block2_tree->AddFriend("slug","prex_grand_average_block2.root");
-  TFile* block3_file = TFile::Open("prex_grand_average_block3_newReg.root");
+  
+  TFile* block3_file = TFile::Open("prex_grand_average_block3.root");
   TTree *block3_tree = (TTree*)block3_file->Get("slug");
-  block3_tree->AddFriend("slug","prex_grand_average_block3.root");
-
+  
   TTree* fTreeArray[4] = {block0_tree,block1_tree,block2_tree,block3_tree};
   
-  vector<TString> fDetectorNameList={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
-				     "reg_asym_us_dd",
-				     "asym_us_avg","asym_usr","asym_usl",
-				     "asym_us_dd",
-				     "asym_bcm_an_us","asym_bcm_an_ds",
-  				     "asym_bcm_an_ds3","asym_bcm_dg_us",
-  				     "asym_bcm_dg_ds","asym_cav4cQ",
-				     "diff_bpm4aX","diff_bpm4eX",
-				     "diff_bpm4aY","diff_bpm4eY",
-				     "diff_bpmE",
-  				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r",
-				     "diff_ch_battery_1","diff_ch_battery_2"};
-
+  vector<TString> fDetectorNameList=device_list;
   TTree* fPosTreeArray[4] = {block0_pos_tree,block1_pos_tree,block2_pos_tree,block3_pos_tree};
   TTree* fNegTreeArray[4] = {block0_neg_tree,block1_neg_tree,block2_neg_tree,block3_neg_tree};
   Color_t fColor[4]={kBlack,kBlue,kRed,kMagenta};
@@ -77,8 +65,11 @@ void PlotByBlockByPolarity(){
     c1->Print("prex_grand_average_byblock_"+label[iplot]+".pdf[");
     for(int idet=0;idet<nDet;idet++){
       c1->Clear("D");
-
       TString device_name = fDetectorNameList[idet];
+      // >>> FIXME  : I don't have block level AT information at this point
+      if(device_name.Contains("at"))
+	 continue;
+      // <<< 
       Double_t rescale =1.0;
       TString unit="";
       if( device_name.Contains("asym")){
@@ -121,32 +112,32 @@ void PlotByBlockByPolarity(){
       vector<TGraphErrors*> fGraphArray(4);
       c1->cd();
       for(int iblk=0;iblk<4;iblk++){
-	draw_cmd = Form("%s_block%d*%f:%s_block%d.error*%f:slug",
-			device_name.Data(),iblk,rescale,
-			device_name.Data(),iblk,rescale);
-	channel_cut = Form(" && %s_block%d.error>0",device_name.Data(),iblk);
-	if(device_name.Contains("battery") || device_name.Contains("WS")){
-	  draw_cmd = Form("%s.block%d*%f:%s.block%d.error*%f:slug",
-			  device_name.Data(),iblk,rescale,
-			  device_name.Data(),iblk,rescale);
-	  channel_cut = Form(" && %s.block%d.error>0",device_name.Data(),iblk);
-	}
+      	draw_cmd = Form("%s.block%d*%f:%s.block%d.error*%f:slug",
+      			device_name.Data(),iblk,rescale,
+      			device_name.Data(),iblk,rescale);
+      	channel_cut = Form(" && %s.block%d.error>0",device_name.Data(),iblk);
+      	// if(device_name.Contains("battery") || device_name.Contains("WS")){
+      	//   draw_cmd = Form("%s.block%d*%f:%s.block%d.error*%f:slug",
+      	// 		  device_name.Data(),iblk,rescale,
+      	// 		  device_name.Data(),iblk,rescale);
+      	//   channel_cut = Form(" && %s.block%d.error>0",device_name.Data(),iblk);
+      	// }
 
-	if(device_name.Contains("bcm_an"))
-	  channel_cut += "&& !(slug>=13 && slug<=21)";
+      	if(device_name.Contains("bcm_an"))
+      	  channel_cut += "&& !(slug>=13 && slug<=21)";
 
-	TTree *this_tree = fTreeArray[iblk];
-	this_tree->Draw(draw_cmd,sign_cut[iplot]+channel_cut,"goff");
-	TGraphErrors *ger_block = new TGraphErrors(this_tree->GetSelectedRows(),
-						   this_tree->GetV3(),this_tree->GetV1(),
-						   0,this_tree->GetV2());
-	ger_block->SetMarkerStyle(21);
-	ger_block->SetMarkerColor(fColor[iblk]);
-	ger_block->SetLineColor(fColor[iblk]);
-	ger_block->SetLineStyle(2);
-	mg_norm->Add(ger_block,"LP");
-	leg->AddEntry(ger_block,Form("block%d",iblk));
-	fGraphArray[iblk] = ger_block;
+      	TTree *this_tree = fTreeArray[iblk];
+      	this_tree->Draw(draw_cmd,sign_cut[iplot]+channel_cut,"goff");
+      	TGraphErrors *ger_block = new TGraphErrors(this_tree->GetSelectedRows(),
+      						   this_tree->GetV3(),this_tree->GetV1(),
+      						   0,this_tree->GetV2());
+      	ger_block->SetMarkerStyle(21);
+      	ger_block->SetMarkerColor(fColor[iblk]);
+      	ger_block->SetLineColor(fColor[iblk]);
+      	ger_block->SetLineStyle(2);
+      	mg_norm->Add(ger_block,"LP");
+      	leg->AddEntry(ger_block,Form("block%d",iblk));
+      	fGraphArray[iblk] = ger_block;
       }
       mg_norm->Draw("A");
       mg_norm->SetTitle(device_name+unit+";slug;"+unit);
@@ -155,35 +146,35 @@ void PlotByBlockByPolarity(){
       mg_norm->GetYaxis()->SetRangeUser(y_min, y_max+0.33*(y_max-y_min));
       leg->Draw("same");
       for(int iblk=0;iblk<4;iblk++){
-	TF1 *f1 = new TF1("f1","[0]",0,30);
-	TF1 *f2 = new TF1("f2","[0]",31,94);
-	f1->SetLineColor(fColor[iblk]);
-	f2->SetLineColor(fColor[iblk]);
-	fGraphArray[iblk]->Fit("f1","QR","",0,30);
-	Double_t par = f1->GetParameter(0);
-	gPad->Update();
-	TPaveStats* ps1 = (TPaveStats*)fGraphArray[iblk]->FindObject("stats")->Clone();
-	ps1->SetName(Form("ps%d",ps_count++));
-	ps1->SetTextColor(fColor[iblk]);
-	ps1->SetX1NDC(0.1+iblk*0.7/4.0);
-	ps1->SetX2NDC(0.1+(iblk+1)*0.7/4.0);
-	ps1->SetY1NDC(0.8);
-	ps1->SetY2NDC(0.9);
+      	TF1 *f1 = new TF1("f1","[0]",0,30);
+      	TF1 *f2 = new TF1("f2","[0]",31,94);
+      	f1->SetLineColor(fColor[iblk]);
+      	f2->SetLineColor(fColor[iblk]);
+      	fGraphArray[iblk]->Fit("f1","QR","",0,30);
+      	Double_t par = f1->GetParameter(0);
+      	gPad->Update();
+      	TPaveStats* ps1 = (TPaveStats*)fGraphArray[iblk]->FindObject("stats")->Clone();
+      	ps1->SetName(Form("ps%d",ps_count++));
+      	ps1->SetTextColor(fColor[iblk]);
+      	ps1->SetX1NDC(0.1+iblk*0.7/4.0);
+      	ps1->SetX2NDC(0.1+(iblk+1)*0.7/4.0);
+      	ps1->SetY1NDC(0.8);
+      	ps1->SetY2NDC(0.9);
 	
-	fGraphArray[iblk]->Fit("f2","QR","same",31,94);
-	gPad->Update();
-	TPaveStats* ps2 = (TPaveStats*)fGraphArray[iblk]->FindObject("stats");
-	ps2->SetName(Form("ps%d",ps_count++));
-	ps2->SetTextColor(fColor[iblk]);
-	ps2->SetX1NDC(0.1+iblk*0.7/4.0);
-	ps2->SetX2NDC(0.1+(iblk+1)*0.7/4.0);
-	ps2->SetY1NDC(0.8);
-	ps2->SetY2NDC(0.7);
+      	fGraphArray[iblk]->Fit("f2","QR","same",31,94);
+      	gPad->Update();
+      	TPaveStats* ps2 = (TPaveStats*)fGraphArray[iblk]->FindObject("stats");
+      	ps2->SetName(Form("ps%d",ps_count++));
+      	ps2->SetTextColor(fColor[iblk]);
+      	ps2->SetX1NDC(0.1+iblk*0.7/4.0);
+      	ps2->SetX2NDC(0.1+(iblk+1)*0.7/4.0);
+      	ps2->SetY1NDC(0.8);
+      	ps2->SetY2NDC(0.7);
 
-	f1->SetParameter(0,par);
-	f1->Draw("same");
-	ps1->Draw("same");
-	// f2->Draw("same");
+      	f1->SetParameter(0,par);
+      	f1->Draw("same");
+      	ps1->Draw("same");
+      	// f2->Draw("same");
       }
       c1->Print("prex_grand_average_byblock_"+label[iplot]+".pdf");
       

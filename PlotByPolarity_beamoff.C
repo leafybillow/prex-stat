@@ -153,8 +153,8 @@ void PlotByPolarity_beamoff(){
       ger_neutral->SetMarkerColor(kBlack);
       ger_neutral->SetLineColor(kBlack);
       ger_neutral->Draw("ALP");
-      y_max = mg->GetYaxis()->GetXmax();
-      y_min = mg->GetYaxis()->GetXmin();
+      y_max = ger_neutral->GetYaxis()->GetXmax();
+      y_min = ger_neutral->GetYaxis()->GetXmin();
       ger_neutral->GetYaxis()->SetRangeUser(y_min, y_max+0.33*(y_max-y_min));
 
       ger_neutral->GetXaxis()->SetLimits(0,95);

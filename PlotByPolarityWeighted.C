@@ -9,6 +9,10 @@ void PlotByPolarityWeighted(){
   TTree *pos_tree = (TTree*)pos_file->Get("slug");
   TTree *neutral_tree = (TTree*)neutral_file->Get("slug");
   pos_tree->AddFriend(neg_tree,"neg");
+  pos_tree->SetAlias("global_sign","sign");
+  neg_tree->AddFriend(pos_tree,"pos");
+  neutral_tree->AddFriend(pos_tree,"pos");
+  neutral_tree->SetAlias("global_sign","pos.sign");
 
   // vector<TString> fDetectorNameList=device_list;
     
@@ -39,8 +43,8 @@ void PlotByPolarityWeighted(){
   p1->SetBottomMargin(0.0);
   p2->SetTopMargin(0.0);
   
-  TString sign_cut[2] = {"(((wien==0 || wien==2)&&(ihwp==\"IN\")) ||((wien==1 || wien==3)&&(ihwp==\"OUT\"))) && slug!=12","(((wien==0 || wien==2)&&(ihwp==\"OUT\")) ||((wien==1 || wien==3)&&(ihwp==\"IN\"))) && slug!=13"};
-
+  // TString sign_cut[2] = {"(((wien==0 || wien==2)&&(ihwp==\"IN\")) ||((wien==1 || wien==3)&&(ihwp==\"OUT\"))) && slug!=12","(((wien==0 || wien==2)&&(ihwp==\"OUT\")) ||((wien==1 || wien==3)&&(ihwp==\"IN\"))) && slug!=13"};
+  TString sign_cut[2] = {"global_sign>0 && slug!=12","global_sign<0 && slug!=13"};
   TString label[2] = {"left_out_right_in","left_in_right_out"};
   for(int iplot=0;iplot<2;iplot++){
     c1->cd();
