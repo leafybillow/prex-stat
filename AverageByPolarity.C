@@ -15,13 +15,16 @@ void AverageByPolarity(Int_t polarity){
     tree_name = "pos";
   if(polarity==-1)
     tree_name = "neg";
-  else if(polarity==0)
+  if(polarity==0)
     tree_name ="neutral";
+  if(polarity==2)
+    tree_name ="norm";
   
   vector<TString> fDetectorNameList=device_list;
   TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
   Int_t nDet = fDetectorNameList.size();
-  
+
+  map< Int_t,TString> fBCMRunMap = LoadNormalizationMap();    
   map< Int_t, TaRunInfo > fRunInfoMap = LoadRunInfoMap();
   map<SLUG_ARM,Int_t> fPittMap = LoadPittsMap();
   map<SLUG_ARM,pair<TString,TString> > fSlugInfoMap;
@@ -74,6 +77,14 @@ void AverageByPolarity(Int_t polarity){
 	myKey = make_pair(myRunInfo.GetSlugNumber(),
 			  myRunInfo.GetArmFlag());
 	detName = arm_switch[myRunInfo.GetArmFlag()];
+	
+	if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
+	  cerr << "-- normalizing BCM info not found for run  "
+	       << run_number << endl;
+	  continue;  // FIXME
+	}else
+	  bcmName = "asym_"+fBCMRunMap[run_number];
+
 	last_run_number = run_number;
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder fStatBuilder;
@@ -86,7 +97,7 @@ void AverageByPolarity(Int_t polarity){
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
-
+	fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  
@@ -144,8 +155,8 @@ void AverageByPolarity(Int_t polarity){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    if(polarity==0)
-      fSign=1.0;
+    // if(polarity==0)
+    //   fSign=1.0;
     (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+"_"+tree_name+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fWien = wienID;

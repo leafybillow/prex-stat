@@ -176,8 +176,6 @@ void AverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    if(polarity==0)
-      fSign=1.0;
     (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+"_"+(tree_name+dot_suffix)+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fWien = wienID;

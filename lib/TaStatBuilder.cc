@@ -296,7 +296,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     gStyle->SetOptStat(0);
     gStyle->SetOptFit(1);
 
-    c1.Clear();
+    c1.Clear("D");
     TString title = *iter_dev +" " + unit;;
     double ySep = 0.3;
     double xSep = 0.65;
@@ -326,16 +326,16 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
 
     TF1 *f1 = new TF1("f1","pol0",-1e3,1e3);
     TF1 *fg = new TF1("fg","gaus",-1e3,1e3);
-    TGraphErrors *tge = new TGraphErrors(npt,x_array,y_array,0,yerr_array);
-    tge->Draw("AP");
-    tge->SetMarkerStyle(20);
-    tge->Fit("f1","Q");
-    tge->SetTitle(title);
+    TGraphErrors tge(npt,x_array,y_array,0,yerr_array);
+    tge.Draw("AP");
+    tge.SetMarkerStyle(20);
+    tge.Fit("f1","Q");
+    tge.SetTitle(title);
 
     fAverageMap[(*iter_dev)].SetChi2NDF(f1->GetChisquare(),
-					      f1->GetNDF());
+					f1->GetNDF());
     Double_t fit_mean = f1->GetParameter(0);
-    TH1F *htge = tge->GetHistogram();
+    TH1F *htge = tge.GetHistogram();
     htge->GetXaxis()->Set(npt,-0.5,npt-0.5);
     for(int ibin=1;ibin<=npt;ibin++)
       htge->GetXaxis()->SetBinLabel(ibin,Form("%.1f",x_val[ibin-1]));
@@ -374,17 +374,17 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     
     c1.Print(filename);
 
-    c1.Clear();
-    TGraph *g_rms =new TGraph(npt,x_array,rms_array);
+    c1.Clear("D");
+    TGraph g_rms(npt,x_array,rms_array);
 
-    g_rms->SetTitle( *iter_dev+" RMS " +rms_unit);
-    TH1F *htrms = g_rms->GetHistogram();
+    g_rms.SetTitle( *iter_dev+" RMS " +rms_unit);
+    TH1F *htrms = g_rms.GetHistogram();
     htrms->GetXaxis()->Set(npt,-0.5,npt-0.5);
     htrms->GetYaxis()->SetTitle("RMS "+rms_unit);
     for(int ibin=1;ibin<=npt;ibin++)
       htrms->GetXaxis()->SetBinLabel(ibin,fAxisTitle[x_val[ibin-1]]);
-    g_rms->SetMarkerStyle(20);
-    g_rms->Draw("AP");
+    g_rms.SetMarkerStyle(20);
+    g_rms.Draw("AP");
     c1.Print(filename);
     iter_dev++;
   }
