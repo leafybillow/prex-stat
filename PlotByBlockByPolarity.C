@@ -143,7 +143,7 @@ void PlotByBlockByPolarity(){
       TString channel_cut = Form(" %s.error>0",device_name.Data());
 
       if(device_name.Contains("bcm_an"))
-        channel_cut += "&& !(slug>=14 && slug<=21)";
+        channel_cut += "&& !(slug>=13 && slug<=21)";
       if(device_name.Contains("cWS"))
         channel_cut += "&& !(slug==12)";
     
@@ -270,7 +270,7 @@ void PlotByBlockByPolarity(){
       //   channel_cut = Form(" && %s.block%d.error>0",device_name.Data(),iblk);
       // }
       if(device_name.Contains("bcm_an"))
-        channel_cut += "&& !(slug>=14 && slug<=21)";
+        channel_cut += "&& !(slug>=13 && slug<=21)";
       if(device_name.Contains("cWS"))
         channel_cut += "&& !(slug==12)";
 
@@ -324,7 +324,7 @@ void PlotByBlockByPolarity(){
       channel_cut = Form("%s.block%d.error>0",device_name.Data(),iblk);
       
       if(device_name.Contains("bcm_an"))
-        channel_cut += "&& !(slug>=14 && slug<=21)";
+        channel_cut += "&& !(slug>=13 && slug<=21)";
       if(device_name.Contains("cWS"))
         channel_cut += "&& !(slug==12)";
 
@@ -400,7 +400,7 @@ void PlotByBlockByPolarity(){
       channel_cut = Form("%s.block%d.error>0",device_name.Data(),iblk);
       
       if(device_name.Contains("bcm_an"))
-        channel_cut += "&& !(slug>=14 && slug<=21)";
+        channel_cut += "&& !(slug>=13 && slug<=21)";
       if(device_name.Contains("cWS"))
         channel_cut += "&& !(slug==12)";
 
