@@ -38,11 +38,13 @@ void PlotAqByBlockByPolarity(){
   				     "asym_bcm_an_ds3","asym_bcm_dg_us",
   				     "asym_bcm_dg_ds","asym_cav4cQ",
 				     "asym_bpm4aWS","asym_bpm4eWS",
+				     "asym_bpm4acWS","asym_bpm4ecWS",
 				     "diff_ch_battery_1","diff_ch_battery_2",
 				     "diff_bpm4aX","diff_bpm4eX",
 				     "diff_bpm4aY","diff_bpm4eY",
 				     "diff_bpmE",
-				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r"};
+				     "diff_battery1l","diff_battery2l",
+				     "diff_battery1r","diff_battery2r"};
 
 
 
@@ -130,6 +132,8 @@ void PlotAqByBlockByPolarity(){
       	// }
       	if(device_name.Contains("bcm_an"))
       	  channel_cut += "&& !(slug>=13 && slug<=21)";
+      	if(device_name.Contains("cWS"))
+      	  channel_cut += "&& !(slug==12)";
 
       	TTree *this_tree = fTreeArray[iblk];
       	this_tree->Draw(draw_cmd,sign_cut[iplot]+channel_cut,"goff");
@@ -236,6 +240,8 @@ void PlotAqByBlockByPolarity(){
 	channel_cut = Form(" && %s.block%d.error>0",device_name.Data(),iblk);
 	if(device_name.Contains("bcm_an"))
 	  channel_cut += "&& !(slug>=13 && slug<=21)";
+      	if(device_name.Contains("cWS"))
+      	  channel_cut += "&& !(slug==12)";
 
 	TTree *this_tree = fPosTreeArray[iblk];
 	this_tree->Draw(draw_cmd,sign_cut[iplot]+channel_cut,"goff");
