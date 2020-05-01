@@ -68,8 +68,8 @@ void PlotByBlockByPolarity(){
   p2->SetTopMargin(0.0);
 
   vector<TString> fDetectorNameList={"Adet","Aq"};
-  // fDetectorNameList.insert(fDetectorNameList.end(),
-  // 			   device_list.begin(),device_list.end());
+  fDetectorNameList.insert(fDetectorNameList.end(),
+  			   device_list.begin(),device_list.end());
   double y_max,y_min;
 
   TTree* fPosTreeArray[4] = {block0_pos_tree,block1_pos_tree,block2_pos_tree,block3_pos_tree};
