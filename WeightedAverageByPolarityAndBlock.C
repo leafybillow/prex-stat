@@ -9,12 +9,18 @@
 #include "device_list.hh"
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 void WeightedAverageByPolarityAndBlock(Int_t polarity,Int_t iblk);
-
+void WeightedAverageByPolarityAndBlock(Int_t iblk){
+    WeightedAverageByPolarityAndBlock(1,iblk);
+    WeightedAverageByPolarityAndBlock(-1,iblk);
+    WeightedAverageByPolarityAndBlock(0,iblk);
+    WeightedAverageByPolarityAndBlock(2,iblk);
+}
 void WeightedAverageByPolarityAndBlock(){
   for(int iblk=0;iblk<4;iblk++){
     WeightedAverageByPolarityAndBlock(1,iblk);
     WeightedAverageByPolarityAndBlock(-1,iblk);
     WeightedAverageByPolarityAndBlock(0,iblk);
+    WeightedAverageByPolarityAndBlock(2,iblk);
   }
 }
 
@@ -24,23 +30,17 @@ void WeightedAverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
     tree_name = "pos";
   if(polarity==-1)
     tree_name = "neg";
-  else if(polarity==0)
+  if(polarity==0)
     tree_name ="neutral";
+  if(polarity==2)
+    tree_name ="normal";
   
   vector<TString> fDetectorNameList={"reg_asym_us_avg","reg_asym_us_dd","reg_asym_usl","reg_asym_usr",
 				     "asym_us_avg","asym_us_dd","asym_usl","asym_usr",
-				     "reg_corr_asym_us_avg","reg_corr_asym_us_dd",
-				     "reg_corr_asym_usl","reg_corr_asym_usr",
 				     "asym_bcm_an_us","asym_bcm_an_ds","asym_bcm_an_ds3",
 				     "asym_bcm_dg_us","asym_bcm_dg_ds","asym_cav4cQ",
-				     "asym_bpm4aWS","asym_bpm4eWS",
-				     "asym_bpm11WS","asym_bpm12WS","asym_bpm1WS",
 				     "diff_bpm4aX","diff_bpm4eX",
-				     "diff_bpm4aY","diff_bpm4eY","diff_bpmE",
-				     "asym_battery1l","asym_battery2l","asym_battery1r","asym_battery2r",
-				     "asym_ch_battery_1","asym_ch_battery_2",
-				     "diff_battery1l","diff_battery2l","diff_battery1r","diff_battery2r",
-				     "diff_ch_battery_1","diff_ch_battery_2"};
+				     "diff_bpm4aY","diff_bpm4eY","diff_bpmE","diff_bpm12X"};
 
 
 
@@ -69,7 +69,7 @@ void WeightedAverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block_by_polarity_quick2.root",islug);
+    TString file_name = Form("./slug_sum_by_polarity/slug%d_by_block_by_polarity_new.root",islug);
     TFile* input_file = TFile::Open(file_name);
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
@@ -185,8 +185,6 @@ void WeightedAverageByPolarityAndBlock(Int_t polarity,Int_t iblk){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    if(polarity==0)
-      fSign=1.0;
     (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+"_"+(tree_name+dot_suffix)+"_weighted.pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fWien = wienID;

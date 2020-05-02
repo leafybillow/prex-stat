@@ -13,6 +13,7 @@ void WeightedAverageByPolarity(){
   WeightedAverageByPolarity(1);
   WeightedAverageByPolarity(-1);
   WeightedAverageByPolarity(0);
+  WeightedAverageByPolarity(2);
 }
 void WeightedAverageByPolarity(Int_t polarity){
   TString tree_name;
@@ -20,27 +21,18 @@ void WeightedAverageByPolarity(Int_t polarity){
     tree_name = "pos";
   if(polarity==-1)
     tree_name = "neg";
-  else if(polarity==0)
+  if(polarity==0)
     tree_name ="neutral";
+  if(polarity==2)
+    tree_name ="norm";
   
   vector<TString> fDetectorNameList={"reg_asym_us_avg","reg_asym_us_dd","reg_asym_usl","reg_asym_usr",
 				     "asym_us_avg","asym_us_dd","asym_usl","asym_usr",
-				     "reg_corr_asym_us_avg","reg_corr_asym_us_dd",
-				     "reg_corr_asym_usl","reg_corr_asym_usr",
 				     "asym_bcm_an_us","asym_bcm_an_ds","asym_bcm_an_ds3",
 				     "asym_bcm_dg_us","asym_bcm_dg_ds",
 				     "diff_bpm4aX","diff_bpm4eX","diff_bpm4aY","diff_bpm4eY",
 				     "diff_bpmE",
-				     "diff_bpm1X","diff_bpm1Y","diff_cav4cX","diff_cav4cY",
-				     "diff_bpm11X","diff_bpm11Y","diff_bpm12X","diff_bpm12Y",
-				     "diff_bpm4acX","diff_bpm4ecX","diff_bpm4acY","diff_bpm4ecY",
-				     "diff_bpm4aX_unrotated","diff_bpm4eX_unrotated",
-				     "diff_bpm4aY_unrotated","diff_bpm4eY_unrotated",
-				     "diff_bpm1X_unrotated","diff_bpm1Y_unrotated",
-				     "diff_bpm11X_unrotated","diff_bpm11Y_unrotated",
-				     "diff_bpm12X_unrotated","diff_bpm12Y_unrotated",
-				     "diff_bpm4acX_unrotated","diff_bpm4ecX_unrotated",
-				     "diff_bpm4acY_unrotated","diff_bpm4ecY_unrotated"};
+				     "diff_bpm11X","diff_bpm11Y","diff_bpm12X","diff_bpm12Y"};
 
 
   TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
@@ -176,8 +168,6 @@ void WeightedAverageByPolarity(Int_t polarity){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    if(polarity==0)
-      fSign=1.0;
     (*iter_slug).second.PullFitAllChannels("./plots/slug"+slug_label+"_"+tree_name+"_weighted.pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fWien = wienID;
