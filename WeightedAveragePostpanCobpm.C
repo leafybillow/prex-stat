@@ -123,7 +123,7 @@ void WeightedAveragePostpanCobpm(){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open("prex_grand_weighted_average_regress.root","RECREATE");
+  TFile *output_rf =  TFile::Open("prex_grand_weighted_average_regress_cbpm.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;

@@ -34,7 +34,7 @@ void PlotAqByBlockByPolarity_pitt(){
   
   TTree* fTreeArray[4] = {block0_tree,block1_tree,block2_tree,block3_tree};
   
-  vector<TString> fDetectorNameList={"asym_bcm_an_us","asym_bcm_an_ds",
+  vector<TString> fDetectorNameList={"Aq","asym_bcm_an_us","asym_bcm_an_ds",
   				     "asym_bcm_an_ds3","asym_bcm_dg_us",
   				     "asym_bcm_dg_ds","asym_cav4cQ",
 				     "asym_bpm4aWS","asym_bpm4eWS",
