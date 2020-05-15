@@ -5,37 +5,26 @@
 #include "lib/TaResult.cc"
 #include "lib/TaStatBuilder.cc"
 #include "lib/PlotPullFit.C"
+#include "report_utility.cc"
 
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 
-void ReportDetectorLog(map<SLUG_ARM,TaStatBuilder> fSBMap,TaResult& aLog);
-void ReportBeamLineLog(map<SLUG_ARM,TaStatBuilder> fSBMap,TaResult& aLog);
-
-void ReportDetectorLog(map<Int_t,TaStatBuilder> fSBMap,TaResult& aLog);
-void ReportBeamLineLog(map<Int_t,TaStatBuilder> fSBMap,TaResult& aLog);
-
-void ReportDetectorLog(TaStatBuilder fSBMap,TaResult& aLog);
-void ReportBeamLineLog(TaStatBuilder fSBMap,TaResult& aLog);
-
 void AveragePostpanOvld(){
   vector<TString> fDetectorNameList{"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
-				    "reg_asym_us_dd","reg_asym_ds_avg",
-				    "reg_asym_left_dd","reg_asym_right_dd"};
+      "reg_asym_us_dd","reg_asym_ds_avg",
+      "reg_asym_left_dd","reg_asym_right_dd"};
   
   vector<TString> fRawDetectorNameList{"asym_us_avg","asym_usr","asym_usl",
-  				       "asym_us_dd","asym_ds_avg",
-  				       "asym_left_dd","asym_right_dd"};
+      "asym_us_dd","asym_ds_avg",
+      "asym_left_dd","asym_right_dd"};
   
   vector<TString> fBPMNameList{"diff_bpm4aX","diff_bpm4eX",
-  			       "diff_bpm4aY","diff_bpm4eY",
-  			       "diff_bpmE","diff_bpm12X"};
+      "diff_bpm4aY","diff_bpm4eY"};
+
   
   vector<TString> fBCMNameList={"asym_bcm_an_us","asym_bcm_an_ds",
-				"asym_bcm_an_ds3","asym_bcm_dg_us",
-				"asym_bcm_dg_ds",
-				"reg_asym_bcm_an_us","reg_asym_bcm_an_ds",
-				"reg_asym_bcm_an_ds3","reg_asym_bcm_dg_us",
-				"reg_asym_bcm_dg_ds"};
+  				"asym_bcm_an_ds3","asym_bcm_dg_us",
+  				"asym_bcm_dg_ds"};
   
   TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
   
@@ -55,11 +44,11 @@ void AveragePostpanOvld(){
   fDeviceNameList.insert(fDeviceNameList.end(),
 			 fDetectorNameList.begin(),fDetectorNameList.end());
   fDeviceNameList.insert(fDeviceNameList.end(),
-			 fRawDetectorNameList.begin(),fRawDetectorNameList.end());
+  			 fRawDetectorNameList.begin(),fRawDetectorNameList.end());
   fDeviceNameList.insert(fDeviceNameList.end(),
-			 fBPMNameList.begin(),fBPMNameList.end());
+  			 fBPMNameList.begin(),fBPMNameList.end());
   fDeviceNameList.insert(fDeviceNameList.end(),
-			 fBCMNameList.begin(),fBCMNameList.end());
+  			 fBCMNameList.begin(),fBCMNameList.end());
   
   map<SLUG_ARM, TaStatBuilder > fSlugStatBuilderMap;
   map<Int_t, TaStatBuilder > fPittsStatBuilderMap;
@@ -67,9 +56,6 @@ void AveragePostpanOvld(){
   
   for(int islug=1;islug<=94;islug++){
     TString file_name = Form("./rootfiles/prexPrompt_slug%d_ovld.root",islug);
-    // if(islug<=3)
-    //   file_name = Form("./rootfiles/prexPrompt_slug%d.root",islug);
-    
     TFile* input_file = TFile::Open(file_name);
 
     if(input_file==NULL){
@@ -123,9 +109,25 @@ void AveragePostpanOvld(){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_number));
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
 	fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
-	fSlugStatBuilderMap[myKey].UpdateStatData("regAq",fChannelMap["reg_"+bcmName]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
+	  if( myRunInfo.GetArmFlag()==1 ){
+	    if((*iter_dev).Contains("l")
+	       || (*iter_dev).Contains("s_avg")
+	       || (*iter_dev).Contains("s_dd") ) {
+	      iter_dev++;
+	      continue;
+	    }
+	  }
+	  if(myRunInfo.GetArmFlag()==2 ){
+	    if((*iter_dev).Contains("r")
+	       || (*iter_dev).Contains("s_avg")
+	       || (*iter_dev).Contains("s_dd") ) {
+	      iter_dev++;
+	      continue;
+	    }
+	  }
+
 	  fSlugStatBuilderMap[myKey].UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
 	  iter_dev++;
 	}
@@ -184,6 +186,7 @@ void AveragePostpanOvld(){
   ReportBeamLineLog(fSlugStatBuilderMap,fSlugLog_beamline);
   
   TaStatBuilder fPittsStatBuilder;
+  TaStatBuilder fPittsNullStatBuilder;
   map<Int_t,TaStatBuilder> fPittsNullStatMap;
   TTree *fPittsTree = new TTree("pitt","Pitts Averages");
   Int_t fPittsID;
@@ -196,17 +199,22 @@ void AveragePostpanOvld(){
     fPittsStatBuilder.UpdateStatBuilder((*iter_pitts).second);
     ((*iter_pitts).second).FillTree(fPittsTree);
     
+    fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
     TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
     fPittsNullStatMap[fPittsID] = fNullStat;
+    fPittsNullStatBuilder.UpdateStatBuilder(fNullStat);
     fNullStat.FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
     iter_pitts++;
   }
   fPittsStatBuilder.PullFitAllChannels("reg_ovld_pitts_pullfit.pdf");
+  fPittsNullStatBuilder.PullFitAllChannels("reg_ovld_pitts_null_pullfit.pdf");
   TaResult fPittLog_md("average_by_pitt_maindet_reg_ovld.log");
-  TaResult fPittLog_beamline("average_by_pitt_beamline_ovld.log");
+  TaResult fPittLog_mdnull("null_by_pitt_maindet_reg_ovld.log");
+  TaResult fPittLog_beamline("average_by_pitt_beamline_reg_ovld.log");
   ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
-  ReportBeamLineLog(fPittsStatBuilder,fPittLog_beamline);
+  ReportDetectorLogByIHWP(fPittsNullStatBuilder,fPittLog_mdnull);
+  // ReportBeamLineLog(fPittsStatBuilder,fPittLog_beamline);
 
   TaStatBuilder fWienStatBuilder;
   map<Int_t,TaStatBuilder> fWienNullStateMap;
@@ -215,6 +223,7 @@ void AveragePostpanOvld(){
   fWienTree->Branch("wien",&fWienID);
   auto iter_wien = fWienStatBuilderMap.begin();
   while(iter_wien!=fWienStatBuilderMap.end()){
+    cout << "Wien ID " << fWienID << endl;
     fWienID = (*iter_wien).first;
     fWienStatBuilder.SetLabel(Form("%d",fWienID));
     (*iter_wien).second.PullFitAllChannels(Form("./plots/reg_ovld_wien%d.pdf",fWienID));
@@ -230,9 +239,9 @@ void AveragePostpanOvld(){
 
   fWienStatBuilder.PullFitAllChannels("reg_ovld_wien_pullfit.pdf");
   TaResult fWienLog_md("average_by_wien_maindet_reg_ovld.log");
-  TaResult fWienLog_beamline("average_by_wien_beamline_ovld.log");
+  TaResult fWienLog_beamline("average_by_wien_beamline_reg_ovld.log");
   ReportDetectorLog(fWienStatBuilder,fWienLog_md);
-  ReportBeamLineLog(fWienStatBuilder,fWienLog_beamline);
+  // ReportBeamLineLog(fWienStatBuilder,fWienLog_beamline);
 
   fWienTree->Write();
   fPittsTree->Write();
@@ -260,217 +269,3 @@ void RegisterBranchesAddress(TTree *aTree,
 
 }
 				  
-void ReportDetectorLog(map<SLUG_ARM,TaStatBuilder> fSBMap,
-		       TaResult& aLog){
-  vector<TString> header_slug={"#","Mean(ppb)","Error(ppb)","RMS(ppm)","chi2/ndf"};
-  aLog.AddHeader(header_slug);
-  Int_t icount=0;
-  auto iter = fSBMap.begin();
-  while(iter!=fSBMap.end()){
-    aLog.AddLine();
-    
-    TString label = Form("%d", ((*iter).first).first);
-    Int_t fArmSlug = ((*iter).first).second;
-    if(fArmSlug==1)
-      label+="R";
-    else if(fArmSlug==2)
-      label+="L";
-    
-    aLog.AddStringEntry(label);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Adet"].mean*1e9);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Adet"].error*1e9);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Adet"].rms*1e6);
-    aLog.AddChi2NDF(((*iter).second).fAverageMap["Adet"].chi2,
-		    ((*iter).second).fAverageMap["Adet"].ndf);
-    iter++;
-  }
-  
-  aLog.InsertHorizontalLine();
-  aLog.Print();
-  aLog.Close();
-}
-
-void ReportBeamLineLog(map<SLUG_ARM,TaStatBuilder> fSBMap,
-		       TaResult& aLog){
-  
-  vector<TString> headers={"#",
-			   "Aq(ppb)","RMS(ppm)",
-			   "D4aX(nm)","RMS(um)",
-			   "D4eX(ppb)","RMS(ppm)",
-			   "D4aY(nm)","RMS(um)",
-			   "D4eY(nm)","RMS(um)",
-			   "DXE(nm)","RMS(um)"};
-
-  vector<TString> bpmlist={"diff_bpm4aX","diff_bpm4eX",
-			   "diff_bpm4aY","diff_bpm4eY",
-  			   "diff_bpmE"};
-
-  aLog.AddHeader(headers);
-  auto iter = fSBMap.begin();
-  while(iter!=fSBMap.end()){
-    aLog.AddLine();
-    TString label = Form("%d", ((*iter).first).first);
-    Int_t fArmSlug = ((*iter).first).second;
-    if(fArmSlug==1)
-      label+="R";
-    else if(fArmSlug==2)
-      label+="L";
-    aLog.AddStringEntry(label);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Aq"].mean*1e9);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Aq"].rms*1e6);
-
-    auto iter_bpm = bpmlist.begin();
-    while(iter_bpm!=bpmlist.end()){
-      aLog.AddFloatEntry(((*iter).second).fAverageMap[*iter_bpm].mean*1e6);
-      aLog.AddFloatEntry(((*iter).second).fAverageMap[*iter_bpm].rms*1e3);
-      iter_bpm++;
-    }
-    iter++;
-  }
-  aLog.InsertHorizontalLine();
-  aLog.Print();
-  aLog.Close();
-}
-
-void ReportDetectorLog(map<Int_t,TaStatBuilder> fSBMap,
-		       TaResult& aLog){
-  vector<TString> header_slug={"#","Mean(ppb)","Error(ppb)","RMS(ppm)","chi2/ndf"};
-  aLog.AddHeader(header_slug);
-  Int_t icount=0;
-  auto iter = fSBMap.begin();
-  while(iter!=fSBMap.end()){
-    aLog.AddLine();
-    TString label = Form("%d", (*iter).first);
-    aLog.AddStringEntry(label);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Adet"].mean*1e9);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Adet"].error*1e9);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Adet"].rms*1e6);
-    aLog.AddChi2NDF(((*iter).second).fAverageMap["Adet"].chi2,
-		    ((*iter).second).fAverageMap["Adet"].ndf);
-    iter++;
-  }
-  
-  aLog.InsertHorizontalLine();
-  aLog.Print();
-  aLog.Close();
-}
-
-void ReportBeamLineLog(map<Int_t,TaStatBuilder> fSBMap,
-		       TaResult& aLog){
-  
-  vector<TString> headers={"#",
-			   "Aq(ppb)","RMS(ppm)",
-			   "D4aX(nm)","RMS(um)",
-			   "D4eX(nm)","RMS(um)",
-			   "D4aY(nm)","RMS(um)",
-			   "D4eY(nm)","RMS(um)",
-			   "DXE(nm)","RMS(um)"};
-
-  vector<TString> bpmlist={"diff_bpm4aX","diff_bpm4eX",
-			   "diff_bpm4aY","diff_bpm4eY",
-  			   "diff_bpmE"};
-
-  aLog.AddHeader(headers);
-  auto iter = fSBMap.begin();
-  while(iter!=fSBMap.end()){
-    aLog.AddLine();
-    TString label = Form("%d", (*iter).first);
-    aLog.AddStringEntry(label);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Aq"].mean*1e9);
-    aLog.AddFloatEntry(((*iter).second).fAverageMap["Aq"].rms*1e6);
-
-    auto iter_bpm = bpmlist.begin();
-    while(iter_bpm!=bpmlist.end()){
-      aLog.AddFloatEntry(((*iter).second).fAverageMap[*iter_bpm].mean*1e6);
-      aLog.AddFloatEntry(((*iter).second).fAverageMap[*iter_bpm].rms*1e3);
-      iter_bpm++;
-    }
-    iter++;
-  }
-  aLog.InsertHorizontalLine();
-  aLog.Print();
-  aLog.Close();
-}
-
-void ReportDetectorLog(TaStatBuilder fStatBuilder,
-		       TaResult& aLog){
-  
-  vector<TString> header_slug={"#","Mean(ppb)","Error(ppb)","RMS(ppm)","chi2/ndf"};
-  aLog.AddHeader(header_slug);
-  vector<TString> fLabel = fStatBuilder.GetStatDataLabelByName("Adet");
-  StatDataArray fStatDataArray = fStatBuilder.GetStatDataArrayByName("Adet");
-  Int_t nData = fStatDataArray.size();
-  for(int i=0;i<nData;i++){
-    aLog.AddLine();
-    aLog.AddStringEntry(fLabel[i]);
-    aLog.AddFloatEntry(fStatDataArray[i].mean*1e9);
-    aLog.AddFloatEntry(fStatDataArray[i].error*1e9);
-    aLog.AddFloatEntry(fStatDataArray[i].rms*1e6);
-    aLog.AddChi2NDF(fStatDataArray[i].chi2,
-		    fStatDataArray[i].ndf);
-
-  }
-  
-  aLog.InsertHorizontalLine();
-  aLog.AddStringEntry("Average");
-  aLog.AddFloatEntry(fStatBuilder.fAverageMap["Adet"].mean*1e9);
-  aLog.AddFloatEntry(fStatBuilder.fAverageMap["Adet"].error*1e9);
-  aLog.AddFloatEntry(fStatBuilder.fAverageMap["Adet"].rms*1e6);
-  aLog.AddChi2NDF(fStatBuilder.fAverageMap["Adet"].chi2,
-		  fStatBuilder.fAverageMap["Adet"].ndf);
-  
-  aLog.InsertHorizontalLine();
-  aLog.Print();
-  aLog.Close();
-}
-
-void ReportBeamLineLog(TaStatBuilder fStatBuilder,TaResult& aLog){
-  vector<TString> headers={"#",
-			   "Aq(ppb)","RMS(ppm)",
-			   "D4aX(nm)","RMS(um)",
-			   "D4eX(nm)","RMS(um)",
-			   "D4aY(nm)","RMS(um)",
-			   "D4eY(nm)","RMS(um)",
-			   "DXE(nm)","RMS(um)"};
-
-  vector<TString> bpmlist={"diff_bpm4aX","diff_bpm4eX",
-			   "diff_bpm4aY","diff_bpm4eY",
-  			   "diff_bpmE"};
-
-  aLog.AddHeader(headers);
-  vector<TString> fLabel = fStatBuilder.GetStatDataLabelByName("Adet");
-  map<TString, StatDataArray> fStatArrayMap;
-  auto iter_bpm = bpmlist.begin();
-  while(iter_bpm!=bpmlist.end()){
-    fStatArrayMap[*iter_bpm] = fStatBuilder.GetStatDataArrayByName(*iter_bpm);
-    iter_bpm++;
-  }
-  fStatArrayMap["Aq"] = fStatBuilder.GetStatDataArrayByName("Aq");
-  Int_t ndata = fLabel.size();
-  for(int i=0;i<ndata;i++){
-    aLog.AddLine();
-    aLog.AddStringEntry(fLabel[i]);
-    aLog.AddFloatEntry(fStatArrayMap["Aq"][i].mean*1e9);
-    aLog.AddFloatEntry(fStatArrayMap["Aq"][i].rms*1e6);
-    auto iter_bpm = bpmlist.begin();
-    while(iter_bpm!=bpmlist.end()){
-      aLog.AddFloatEntry(fStatArrayMap[*iter_bpm][i].mean*1e6);
-      aLog.AddFloatEntry(fStatArrayMap[*iter_bpm][i].rms*1e3);
-      iter_bpm++;
-    }
-  }
-  aLog.InsertHorizontalLine();
-  aLog.AddStringEntry("Average");
-  aLog.AddFloatEntry(fStatBuilder.fAverageMap["Aq"].mean*1e9);
-  aLog.AddFloatEntry(fStatBuilder.fAverageMap["Aq"].rms*1e6);
-  iter_bpm = bpmlist.begin();
-  while(iter_bpm!=bpmlist.end()){
-    aLog.AddFloatEntry(fStatBuilder.fAverageMap[*iter_bpm].mean*1e6);
-    aLog.AddFloatEntry(fStatBuilder.fAverageMap[*iter_bpm].rms*1e3);
-    iter_bpm++;
-  }
-  
-  aLog.InsertHorizontalLine();
-  aLog.Print();
-  aLog.Close();
-}
