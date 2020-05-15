@@ -9,7 +9,7 @@
 
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 
-void AverageDitherBurst(){
+void AverageDitherBurst_new(){
   vector<TString> fDetectorNameList{"dit_asym_us_avg","dit_asym_usr","dit_asym_usl",
 				    "dit_asym_us_dd"};
   //"dit_asym_ds_avg","dit_asym_left_dd","dit_asym_right_dd"};
@@ -45,13 +45,16 @@ void AverageDitherBurst(){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./rootfiles/DitMergedByBurst_slug%d.root",islug);
+    // TString file_name = Form("./rootfiles/DitMergedByBurst_slug%d.root",islug);
+    TString file_name = Form("./rootfiles/DitMerged_slug%d_newTest.root",islug);
     TFile* input_file = TFile::Open(file_name);
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
       continue;
     }
-    TTree* dits_tree = (TTree*)input_file->Get("burst_dit");
+    TTree* dits_tree = (TTree*)input_file->Get("burst_mulc_dit");
+    dits_tree->AddFriend( (TTree*)input_file->Get("burst_mulc_dit_combo") );
+    // TTree* dits_tree = (TTree*)input_file->Get("burst_dit");
 
     if(dits_tree==NULL){
       cerr << " Error: Dither Tree not found in "
@@ -63,7 +66,8 @@ void AverageDitherBurst(){
     Int_t mini_id=0;
     Int_t last_run_number=0;
     dits_tree->SetBranchAddress("run",&run_number);
-    dits_tree->SetBranchAddress("mini",&mini_id);
+    dits_tree->SetBranchAddress("minirun",&mini_id);
+    // dits_tree->SetBranchAddress("mini",&mini_id);
     RegisterBranchesAddress(dits_tree,fDeviceNameList,fChannelMap);
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
@@ -130,7 +134,7 @@ void AverageDitherBurst(){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open("prex_grand_average_dither.root","RECREATE");
+  TFile *output_rf =  TFile::Open("prex_grand_average_dither_new.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
