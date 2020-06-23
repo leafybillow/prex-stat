@@ -9,14 +9,12 @@
 
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 
-void AveragePostpanCobpm(){
-  vector<TString> fDetectorNameList{"reg_asym_us_avg","reg_asym_usr","reg_asym_usl",
-				    "reg_asym_us_dd","reg_asym_ds_avg",
-				    "reg_asym_left_dd","reg_asym_right_dd"};
+void AverageLRBBurst(){
+  vector<TString> fDetectorNameList{"cor_asym_us_avg","cor_usr","cor_usl",
+				    "cor_asym_us_dd"};
   
-  TString arm_switch[3]={"reg_asym_us_avg","reg_asym_usr","reg_asym_usl"};
+  TString arm_switch[3]={"cor_asym_us_avg","cor_usr","cor_usl"};
   
-  map< Int_t,TString> fBCMRunMap = LoadNormalizationMap();
   map< Int_t, TaRunInfo > fRunInfoMap = LoadRunInfoMap();
   map<SLUG_ARM,Int_t> fPittMap = LoadPittsMap();
   map<SLUG_ARM,pair<TString,TString> > fSlugInfoMap;
@@ -33,31 +31,33 @@ void AveragePostpanCobpm(){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./rootfiles/PostpanMerged_slug%d.root",islug);
+    TString file_name = Form("./rootfiles/MergedSum_slug%d.root",islug);
     TFile* input_file = TFile::Open(file_name);
-
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
       continue;
     }
-    TTree* mini_tree = (TTree*)input_file->Get("mini");
-    if(mini_tree==NULL){
-      cerr << " Error: Mini Tree not found in "
+    TTree* lrbs_tree = (TTree*)input_file->Get("burst_mulc_lrb_burst");
+    lrbs_tree->AddFriend( (TTree*)input_file->Get("burst_mulc") );
+
+    if(lrbs_tree==NULL){
+      cerr << " Error: Lrb Tree not found in "
 	   << file_name << endl;
       continue;
     }
-    Int_t nEntries = mini_tree->GetEntries();
+    Int_t nEntries = lrbs_tree->GetEntries();
     Int_t run_number=0;
-    Int_t mini_number=0;
+    Int_t mini_id=0;
     Int_t last_run_number=0;
-    mini_tree->SetBranchAddress("run",&run_number);
-    mini_tree->SetBranchAddress("minirun",&mini_number);
-    RegisterBranchesAddress(mini_tree,fDeviceNameList,fChannelMap);
+    lrbs_tree->SetBranchAddress("run",&run_number);
+    lrbs_tree->SetBranchAddress("minirun",&mini_id);
+    // lrbs_tree->SetBranchAddress("mini",&mini_id);
+    RegisterBranchesAddress(lrbs_tree,fDeviceNameList,fChannelMap);
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
     TString detName, bcmName;
     for(int ievt=0;ievt<nEntries;ievt++){
-      mini_tree->GetEntry(ievt);
+      lrbs_tree->GetEntry(ievt);
       if(fRunInfoMap.find(run_number)==fRunInfoMap.end()){
 	cerr << "-- run info not found for run  "
 	     << run_number << " and will skip "  << endl;
@@ -68,12 +68,6 @@ void AveragePostpanCobpm(){
 	myKey = make_pair(myRunInfo.GetSlugNumber(),
 			  myRunInfo.GetArmFlag());
 	detName = arm_switch[myRunInfo.GetArmFlag()];
-	if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
-	  cerr << "-- normalizing BCM info not found for run  "
-	       << run_number << endl;
-	  continue;  // FIXME
-	}else
-	  bcmName = "asym_"+fBCMRunMap[run_number];
 	last_run_number = run_number;
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder fStatBuilder;
@@ -84,7 +78,7 @@ void AveragePostpanCobpm(){
 	}
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
-	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_number));
+	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
@@ -104,16 +98,16 @@ void AveragePostpanCobpm(){
 	      continue;
 	    }
 	  }
-
 	  fSlugStatBuilderMap[myKey].UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
 	  iter_dev++;
 	}
-      }
+      }else
+	cout << "run " << run_number << " is not a good run " << endl;
     } // end of minirun loop inside a slug
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open("prex_grand_average_regress_cbpm.root","RECREATE");
+  TFile *output_rf =  TFile::Open("prex_grand_average_lrb_respin2.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
@@ -121,7 +115,7 @@ void AveragePostpanCobpm(){
   TBranch *fBranchSlug = fSlugTree->Branch("slug",&fSlugID);
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
-  TaResult fSlugLog_md("average_by_slug_maindet_reg_cbpm.log");
+  TaResult fSlugLog_md("average_by_slug_maindet_lrb.log");
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
   TString last_wien_state="";
@@ -135,7 +129,7 @@ void AveragePostpanCobpm(){
     else if(fArmSlug==2)
       slug_label+="L";
     fSign = fSlugSignMap[(*iter_slug).first];
-    (*iter_slug).second.PullFitAllChannels("./plots/reg_cbpm_slug"+slug_label+".pdf");
+    (*iter_slug).second.PullFitAllChannels("./plots/lrb_slug"+slug_label+".pdf");
     (*iter_slug).second.FillTree(fSlugTree);
     fSlugTree->Fill();
     Int_t pittsID = fPittMap[(*iter_slug).first];
@@ -159,6 +153,7 @@ void AveragePostpanCobpm(){
   }
   
   ReportDetectorLog(fSlugStatBuilderMap,fSlugLog_md);
+  
   TaStatBuilder fPittsStatBuilder;
   TaStatBuilder fPittsNullStatBuilder;
   map<Int_t,TaStatBuilder> fPittsNullStatMap;
@@ -169,22 +164,22 @@ void AveragePostpanCobpm(){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     fPittsStatBuilder.SetLabel(Form("%d",fPittsID));
-    (*iter_pitts).second.PullFitAllChannels(Form("./plots/reg_cbpm_pitts%d.pdf",fPittsID));
+    (*iter_pitts).second.PullFitAllChannels(Form("./plots/lrb_pitts%d.pdf",fPittsID));
     fPittsStatBuilder.UpdateStatBuilder((*iter_pitts).second);
     ((*iter_pitts).second).FillTree(fPittsTree);
     
-    fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
     TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
     fPittsNullStatMap[fPittsID] = fNullStat;
+    fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
     fPittsNullStatBuilder.UpdateStatBuilder(fNullStat);
     fNullStat.FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
     iter_pitts++;
   }
-  fPittsStatBuilder.PullFitAllChannels("reg_cbpm_pitts_pullfit.pdf");
-  fPittsNullStatBuilder.PullFitAllChannels("reg_cbpm_pitts_null_pullfit.pdf");
-  TaResult fPittLog_md("average_by_pitt_maindet_reg_cbpm.log");
-  TaResult fPittLog_mdnull("null_by_pitt_maindet_reg_cbpm.log");
+  fPittsStatBuilder.PullFitAllChannels("lrb_pitts_pullfit.pdf");
+  fPittsNullStatBuilder.PullFitAllChannels("lrb_pitts_null_pullfit.pdf");
+  TaResult fPittLog_md("average_by_pitt_maindet_lrb.log");
+  TaResult fPittLog_mdnull("null_by_pitt_maindet_lrb.log");
   ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
   ReportDetectorLogByIHWP(fPittsNullStatBuilder,fPittLog_mdnull);
 
@@ -196,8 +191,9 @@ void AveragePostpanCobpm(){
   auto iter_wien = fWienStatBuilderMap.begin();
   while(iter_wien!=fWienStatBuilderMap.end()){
     fWienID = (*iter_wien).first;
+    cout << fWienID << endl;
     fWienStatBuilder.SetLabel(Form("%d",fWienID));
-    (*iter_wien).second.PullFitAllChannels(Form("./plots/reg_cbpm_wien%d.pdf",fWienID));
+    (*iter_wien).second.PullFitAllChannels(Form("./plots/lrb_wien%d.pdf",fWienID));
     (*iter_wien).second.PullFitAllChannelsByIHWP("dummy.pdf");
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
     (*iter_wien).second.FillTree(fWienTree);
@@ -208,9 +204,9 @@ void AveragePostpanCobpm(){
     fWienTree->Fill();
     iter_wien++;
   }
-
-  fWienStatBuilder.PullFitAllChannels("reg_cbpm_wien_pullfit.pdf");
-  TaResult fWienLog_md("average_by_wien_maindet_reg_cbpm.log");
+  
+  fWienStatBuilder.PullFitAllChannels("lrb_wien_pullfit.pdf");
+  TaResult fWienLog_md("average_by_wien_maindet_lrb.log");
   ReportDetectorLogByIHWP(fWienStatBuilder,fWienLog_md);
 
   fWienTree->Write();
@@ -230,7 +226,7 @@ void RegisterBranchesAddress(TTree *aTree,
     }
     TBranch *aBranch = aTree->GetBranch(*iter);
     if(aBranch!=NULL){
-      fMap[*iter].RegisterAddressByName_postpan(aBranch);
+      fMap[*iter].RegisterAddressByName_dither(aBranch);
     }else{
       fMap[*iter] = fStatDataZero;
     }
@@ -238,4 +234,3 @@ void RegisterBranchesAddress(TTree *aTree,
   }
 
 }
-				  

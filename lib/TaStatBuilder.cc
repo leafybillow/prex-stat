@@ -12,6 +12,18 @@ void TaStatBuilder::UpdateWeightingError(StatData input){
 }
 
 void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
+
+  Double_t nsamples2 = 0.0;
+  Double_t error2 = input.error;
+  Double_t rms2 = input.rms;
+
+  if(input.num_samples==0)
+    nsamples2= pow(rms2/error2,2);
+  else
+    nsamples2 = input.num_samples;
+
+  if(nsamples2>0 && nsamples2<=4500)
+    return;
   
   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
     fDeviceNameList.push_back(chname);
@@ -29,6 +41,17 @@ void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
 void TaStatBuilder::UpdateStatData(StatData &dest,
 				   StatData input,Int_t sign){
   if(input.error<=0 || input.error!=input.error)
+    return;
+
+  Double_t nsamples2 = 0.0;
+  Double_t error2 = input.error;
+  Double_t rms2 = input.rms;
+  if(input.num_samples==0)
+    nsamples2= pow(rms2/error2,2);
+  else
+    nsamples2 = input.num_samples;
+
+  if(nsamples2>0 && nsamples2<=4500)
     return;
   
   if(dest.error==0){
@@ -73,6 +96,7 @@ void TaStatBuilder::UpdateCentralMoment(StatData &dest,
   // FIXME sign not in used
   if(input.error<=0 || input.error!=input.error)
     return;
+
   if(input.mean_sum==0)
     input.mean_sum = input.mean;
   
@@ -85,6 +109,9 @@ void TaStatBuilder::UpdateCentralMoment(StatData &dest,
     nsamples2= pow(rms2/error2,2);
   else
     nsamples2 = input.num_samples;
+
+  if(nsamples2>0 && nsamples2<=4500)
+    return;
   
   Double_t M2_2 = pow(rms2,2)*nsamples2;
 
@@ -232,10 +259,12 @@ void TaStatBuilder::ProcessNullAsym(TTree *fTree){
 
 void TaStatBuilder::PullFitAllChannels(TString filename){
   TCanvas c1("c1","c1",1100,600);
+  TCanvas c2("c2","c2",1100,600);
   c1.cd();
   c1.Print(filename+"[");
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
+    c1.Clear();
     StatDataArray fStatDataArray  = fStatDataArrayMap[*iter_dev];
     vector<Double_t> x_val;
     vector<Double_t> y_val;
@@ -374,7 +403,8 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     
     c1.Print(filename);
 
-    c1.Clear("D");
+    c2.cd();
+    c2.Clear("D");
     TGraph g_rms(npt,x_array,rms_array);
 
     g_rms.SetTitle( *iter_dev+" RMS " +rms_unit);
@@ -385,7 +415,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
       htrms->GetXaxis()->SetBinLabel(ibin,fAxisTitle[x_val[ibin-1]]);
     g_rms.SetMarkerStyle(20);
     g_rms.Draw("AP");
-    c1.Print(filename);
+    c2.Print(filename);
     iter_dev++;
   }
   c1.Print(filename+"]");

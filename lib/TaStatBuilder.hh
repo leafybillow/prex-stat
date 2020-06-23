@@ -78,6 +78,12 @@ public:
   StatData GetNullAverage(StatData in1,StatData in2);
   
   void PullFitAllChannels(TString filename);
+  void PullFitAllChannelsByIHWP(TString filename){
+    if(fStatBuilderByIHWP.find("IN")!=fStatBuilderByIHWP.end())
+      fStatBuilderByIHWP["IN"].PullFitAllChannels(filename);
+    if(fStatBuilderByIHWP.find("OUT")!=fStatBuilderByIHWP.end())
+      fStatBuilderByIHWP["OUT"].PullFitAllChannels(filename);
+  };
   void FillTree(TTree *,TString prefix="");
   void ProcessNullAsym(TTree*);
   void SetLabel(TString input){ fLabel_tmp = input;};

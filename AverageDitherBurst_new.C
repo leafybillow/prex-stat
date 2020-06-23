@@ -10,19 +10,12 @@
 void RegisterBranchesAddress(TTree*, vector<TString>,map<TString,StatData> &fMap);
 
 void AverageDitherBurst_new(){
-  vector<TString> fDetectorNameList{"dit_asym_us_avg","dit_asym_usr","dit_asym_usl",
-				    "dit_asym_us_dd"};
-  //"dit_asym_ds_avg","dit_asym_left_dd","dit_asym_right_dd"};
-  
-  // vector<TString> fRawDetectorNameList{"asym_us_avg","asym_usr","asym_usl",
-  // 				       "asym_us_dd","asym_ds_avg",
-  // 				       "asym_left_dd","asym_right_dd"};
+  vector<TString> fDetectorNameList={"dit_asym_us_avg","dit_asym_usr",
+				     "dit_asym_usl","dit_asym_us_dd"};
   
   TString arm_switch[3]={"dit_asym_us_avg","dit_asym_usr","dit_asym_usl"};
   
   Int_t nDet = fDetectorNameList.size();
-  
-  // map< Int_t,TString> fBCMRunMap = LoadNormalizationMap();
   map< Int_t, TaRunInfo > fRunInfoMap = LoadRunInfoMap();
   map<SLUG_ARM,Int_t> fPittMap = LoadPittsMap();
   map<SLUG_ARM,pair<TString,TString> > fSlugInfoMap;
@@ -33,20 +26,13 @@ void AverageDitherBurst_new(){
   
   fDeviceNameList.insert(fDeviceNameList.end(),
 			 fDetectorNameList.begin(),fDetectorNameList.end());
-  // fDeviceNameList.insert(fDeviceNameList.end(),
-  // 			 fRawDetectorNameList.begin(),fRawDetectorNameList.end());
-  // fDeviceNameList.insert(fDeviceNameList.end(),
-  // 			 fBPMNameList.begin(),fBPMNameList.end());
-  // fDeviceNameList.insert(fDeviceNameList.end(),
-  // 			 fBCMNameList.begin(),fBCMNameList.end());
   
   map<SLUG_ARM, TaStatBuilder > fSlugStatBuilderMap;
   map<Int_t, TaStatBuilder > fPittsStatBuilderMap;
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    // TString file_name = Form("./rootfiles/DitMergedByBurst_slug%d.root",islug);
-    TString file_name = Form("./rootfiles/DitMerged_slug%d_newTest.root",islug);
+    TString file_name = Form("./rootfiles/MergedSum_slug%d.root",islug);
     TFile* input_file = TFile::Open(file_name);
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
@@ -54,7 +40,8 @@ void AverageDitherBurst_new(){
     }
     TTree* dits_tree = (TTree*)input_file->Get("burst_mulc_dit");
     dits_tree->AddFriend( (TTree*)input_file->Get("burst_mulc_dit_combo") );
-    // TTree* dits_tree = (TTree*)input_file->Get("burst_dit");
+    dits_tree->AddFriend( (TTree*)input_file->Get("burst") ) ;
+    dits_tree->AddFriend( (TTree*)input_file->Get("burst_mulc") );
 
     if(dits_tree==NULL){
       cerr << " Error: Dither Tree not found in "
@@ -67,11 +54,10 @@ void AverageDitherBurst_new(){
     Int_t last_run_number=0;
     dits_tree->SetBranchAddress("run",&run_number);
     dits_tree->SetBranchAddress("minirun",&mini_id);
-    // dits_tree->SetBranchAddress("mini",&mini_id);
     RegisterBranchesAddress(dits_tree,fDeviceNameList,fChannelMap);
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
-    TString detName, bcmName;
+    TString detName;
     for(int ievt=0;ievt<nEntries;ievt++){
       dits_tree->GetEntry(ievt);
       if(fRunInfoMap.find(run_number)==fRunInfoMap.end()){
@@ -84,12 +70,6 @@ void AverageDitherBurst_new(){
 	myKey = make_pair(myRunInfo.GetSlugNumber(),
 			  myRunInfo.GetArmFlag());
 	detName = arm_switch[myRunInfo.GetArmFlag()];
-	// if(fBCMRunMap.find(run_number)==fBCMRunMap.end()){
-	//   cerr << "-- normalizing BCM info not found for run  "
-	//        << run_number << endl;
-	//   continue;  // FIXME
-	// }else
-	//   bcmName = "asym_"+fBCMRunMap[run_number];
 	last_run_number = run_number;
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder fStatBuilder;
@@ -102,11 +82,6 @@ void AverageDitherBurst_new(){
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
-	// fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
-	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
-	// 					  fChannelMap["diff_bpm11X"]);
-	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
-	// 					  fChannelMap["diff_bpm12X"]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  if( myRunInfo.GetArmFlag()==1 ){
@@ -134,7 +109,7 @@ void AverageDitherBurst_new(){
     input_file->Close();
   }// end of slug loop
   
-  TFile *output_rf =  TFile::Open("prex_grand_average_dither_new.root","RECREATE");
+  TFile *output_rf =  TFile::Open("prex_grand_average_dither_respin2.root","RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
@@ -143,7 +118,6 @@ void AverageDitherBurst_new(){
   TBranch *fBranchArm = fSlugTree->Branch("arm_flag",&fArmSlug);
   TBranch *fBranchSign = fSlugTree->Branch("sign",&fSign);
   TaResult fSlugLog_md("average_by_slug_maindet_dit.log");
-  // TaResult fSlugLog_beamline("average_by_slug_beamline.log");
   auto iter_slug = fSlugStatBuilderMap.begin();
   Int_t wienID = -1;
   TString last_wien_state="";
@@ -181,7 +155,6 @@ void AverageDitherBurst_new(){
   }
   
   ReportDetectorLog(fSlugStatBuilderMap,fSlugLog_md);
-  // ReportBeamLineLog(fSlugStatBuilderMap,fSlugLog_beamline);
   
   TaStatBuilder fPittsStatBuilder;
   TaStatBuilder fPittsNullStatBuilder;
@@ -210,9 +183,8 @@ void AverageDitherBurst_new(){
   TaResult fPittLog_md("average_by_pitt_maindet_dit.log");
   TaResult fPittLog_mdnull("null_by_pitt_maindet_dit.log");
   ReportDetectorLog(fPittsStatBuilder,fPittLog_md);
-  ReportDetectorLogByIHWP(fPittsNullStatBuilder,fPittLog_mdnull);
-  // ReportBeamLineLog(fPittsStatBuilderMap,fPittLog_beamline);
-  // TaResult fPittLog_beamline("average_by_pitt_beamline.log");
+  ReportDetectorNullByIHWP(fPittsNullStatBuilder,fPittLog_mdnull);
+
   TaStatBuilder fWienStatBuilder;
   map<Int_t,TaStatBuilder> fWienNullStateMap;
   TTree *fWienTree = new TTree("wien","Wien Averages");
@@ -224,6 +196,7 @@ void AverageDitherBurst_new(){
     cout << fWienID << endl;
     fWienStatBuilder.SetLabel(Form("%d",fWienID));
     (*iter_wien).second.PullFitAllChannels(Form("./plots/dit_wien%d.pdf",fWienID));
+    (*iter_wien).second.PullFitAllChannelsByIHWP("dummy.pdf");
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
     (*iter_wien).second.FillTree(fWienTree);
     
@@ -234,11 +207,9 @@ void AverageDitherBurst_new(){
     iter_wien++;
   }
   
-  // TaResult fWienLog_beamline("average_by_wien_beamline.log"); // 
-  // ReportBeamLineLog(fWienStatBuilderMap,fWienLog_beamline);
   fWienStatBuilder.PullFitAllChannels("dit_wien_pullfit.pdf");
   TaResult fWienLog_md("average_by_wien_maindet_dit.log");
-  ReportDetectorLog(fWienStatBuilder,fWienLog_md);
+  ReportDetectorLogByIHWP(fWienStatBuilder,fWienLog_md);
 
   fWienTree->Write();
   fPittsTree->Write();

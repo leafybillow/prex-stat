@@ -28,7 +28,7 @@ void AveragePostpan(){
   
   vector<TString> fBPMNameList{"diff_bpm4aX","diff_bpm4eX",
   			       "diff_bpm4aY","diff_bpm4eY",
-  			       "diff_bpm11X","diff_bpm12X"};
+  			       "diff_bpmE","diff_bpm12X"};
   
   vector<TString> fBCMNameList{"asym_bcm_an_us","asym_bcm_an_ds",
 			       "asym_bcm_an_ds3","asym_bcm_dg_us",
@@ -63,13 +63,13 @@ void AveragePostpan(){
   map<Int_t, TaStatBuilder > fWienStatBuilderMap;
   
   for(int islug=1;islug<=94;islug++){
-    TString file_name = Form("./rootfiles/prexPrompt_slug%d.root",islug);
+    TString file_name = Form("./rootfiles/PostpanMerged_slug%d.root",islug);
     TFile* input_file = TFile::Open(file_name);
     if(input_file==NULL){
       cerr <<  file_name << " is not found and is skipped" << endl;
       continue;
     }
-    TTree* mini_tree = (TTree*)input_file->Get("T");
+    TTree* mini_tree = (TTree*)input_file->Get("mini");
     if(mini_tree==NULL){
       cerr << " Error: Mini Tree not found in "
 	   << file_name << endl;
@@ -115,11 +115,11 @@ void AveragePostpan(){
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_number));
 	fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
-	fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
-	fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
-						  fChannelMap["diff_bpm11X"]);
-	fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
-						  fChannelMap["diff_bpm12X"]);
+	// fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
+	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
+	// 					  fChannelMap["diff_bpm11X"]);
+	// fSlugStatBuilderMap[myKey].UpdateStatData("diff_bpmE",
+	// 					  fChannelMap["diff_bpm12X"]);
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  fSlugStatBuilderMap[myKey].UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
