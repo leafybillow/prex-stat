@@ -325,11 +325,11 @@ void ReportBeamLineLogByIHWP(map<Int_t,TaStatBuilder> fSBMap,
   
   vector<TString> headers={"#",
 			   "Aq(ppb)","RMS(ppm)",
-			   "D4aX(nm)","RMS(um)",
-			   "D4eX(nm)","RMS(um)",
-			   "D4aY(nm)","RMS(um)",
-			   "D4eY(nm)","RMS(um)",
-			   "DXE(nm)","RMS(um)"};
+			   "D_4aX(nm)","RMS(um)",
+			   "D_4eX(nm)","RMS(um)",
+			   "D_4aY(nm)","RMS(um)",
+			   "D_4eY(nm)","RMS(um)",
+			   "D_bpmE(nm)","RMS(um)"};
 
   vector<TString> bpmlist={"diff_bpm4aX","diff_bpm4eX",
 			   "diff_bpm4aY","diff_bpm4eY",
@@ -383,6 +383,84 @@ void ReportBeamLineLogByIHWP(map<Int_t,TaStatBuilder> fSBMap,
 
   }
 
+  aLog.Print();
+  aLog.Close();
+}
+
+void ReportBeamLineLogByIHWP(TaStatBuilder fStatBuilder,
+			     TaResult& aLog){
+  
+  vector<TString> headers={"#",
+			   "Aq(ppb)","RMS(ppm)",
+			   "D_4aX(nm)","RMS(um)",
+			   "D_4eX(nm)","RMS(um)",
+			   "D_4aY(nm)","RMS(um)",
+			   "D_4eY(nm)","RMS(um)",
+			   "D_bpmE(nm)","RMS(um)"};
+
+  vector<TString> bpmlist={"diff_bpm4aX","diff_bpm4eX",
+			   "diff_bpm4aY","diff_bpm4eY",
+  			   "diff_bpmE"};
+  aLog.AddHeader(headers);
+  vector<TString> fLabel = fStatBuilder.GetStatDataLabelByName("asym_bcm_target");
+  map<TString, StatDataArray> fStatArrayMap;
+  map<TString, StatDataArray> fStatArrayMap_in;
+  map<TString, StatDataArray> fStatArrayMap_out;
+  auto iter_bpm = bpmlist.begin();
+  while(iter_bpm!=bpmlist.end()){
+    fStatArrayMap[*iter_bpm] = fStatBuilder.GetStatDataArrayByName(*iter_bpm);
+    fStatArrayMap_in[*iter_bpm] = fStatBuilder.GetStatDataArrayByName(*iter_bpm,"IN");
+    fStatArrayMap_out[*iter_bpm] = fStatBuilder.GetStatDataArrayByName(*iter_bpm,"OUT");
+    iter_bpm++;
+  }
+  fStatArrayMap["asym_bcm_target"] = fStatBuilder.GetStatDataArrayByName("asym_bcm_target");
+  fStatArrayMap_in["asym_bcm_target"] = fStatBuilder.GetStatDataArrayByName("asym_bcm_target","IN");
+  fStatArrayMap_out["asym_bcm_target"] = fStatBuilder.GetStatDataArrayByName("asym_bcm_target","OUT");
+  Int_t ndata = fLabel.size();
+
+  for(int i=0;i<ndata;i++){
+    // aLog.AddLine();
+    // aLog.AddStringEntry("IN");
+    // aLog.AddFloatEntry(fStatArrayMap_in["asym_bcm_target"][i].mean*1e9);
+    // aLog.AddFloatEntry(fStatArrayMap_in["asym_bcm_target"][i].rms*1e6);
+    // auto iter_bpm = bpmlist.begin();
+    // while(iter_bpm!=bpmlist.end()){
+    //   aLog.AddFloatEntry(fStatArrayMap_in[*iter_bpm][i].mean*1e6);
+    //   aLog.AddFloatEntry(fStatArrayMap_in[*iter_bpm][i].rms*1e3);
+    //   iter_bpm++;
+    // }
+    // aLog.AddLine();
+    // aLog.AddStringEntry("OUT");
+    // aLog.AddFloatEntry(fStatArrayMap_out["asym_bcm_target"][i].mean*1e9);
+    // aLog.AddFloatEntry(fStatArrayMap_out["asym_bcm_target"][i].rms*1e6);
+    // iter_bpm = bpmlist.begin();
+    // while(iter_bpm!=bpmlist.end()){
+    //   aLog.AddFloatEntry(fStatArrayMap_out[*iter_bpm][i].mean*1e6);
+    //   aLog.AddFloatEntry(fStatArrayMap_out[*iter_bpm][i].rms*1e3);
+    //   iter_bpm++;
+    // }
+    aLog.AddStringEntry(fLabel[i]);
+    aLog.AddFloatEntry(fStatArrayMap["asym_bcm_target"][i].mean*1e9);
+    aLog.AddFloatEntry(fStatArrayMap["asym_bcm_target"][i].rms*1e6);
+    iter_bpm = bpmlist.begin();
+    while(iter_bpm!=bpmlist.end()){
+      aLog.AddFloatEntry(fStatArrayMap[*iter_bpm][i].mean*1e6);
+      aLog.AddFloatEntry(fStatArrayMap[*iter_bpm][i].rms*1e3);
+      iter_bpm++;
+    }
+    aLog.InsertHorizontalLine();
+  }
+  aLog.InsertHorizontalLine();
+  aLog.AddStringEntry("Grand");
+  aLog.AddFloatEntry(fStatBuilder.fAverageMap["asym_bcm_target"].mean*1e9);
+  aLog.AddFloatEntry(fStatBuilder.fAverageMap["asym_bcm_target"].rms*1e6);
+  iter_bpm = bpmlist.begin();
+  while(iter_bpm!=bpmlist.end()){
+    aLog.AddFloatEntry(fStatBuilder.fAverageMap[*iter_bpm].mean*1e6);
+    aLog.AddFloatEntry(fStatBuilder.fAverageMap[*iter_bpm].rms*1e3);
+    iter_bpm++;
+  }
+  aLog.InsertHorizontalLine();
   aLog.Print();
   aLog.Close();
 }
