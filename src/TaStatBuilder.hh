@@ -23,6 +23,7 @@ public:
   virtual ~StatData(){};
   Double_t mean;
   Double_t error;
+  Double_t error_scaled;
   Double_t mean_sum;
   Double_t rms;
   Double_t num_samples;
@@ -35,6 +36,7 @@ public:
   void Zero(){
     mean =0.0;
     error =0.0;
+    error_scaled = 0.0;
     mean_sum=0.0;
     rms =0.0;
     num_samples =0.0;
@@ -120,6 +122,7 @@ public:
   void ReportLog(TaResult &log);
   void ReportLogByIHWP(TaResult &log);
   Double_t LoadScaleFactor(TString, TString &, TString &);
+  void RescaleErrorBar();
 private:
   Double_t weighting_errorbar;
   Bool_t kUseWeight;

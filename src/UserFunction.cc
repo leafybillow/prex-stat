@@ -91,9 +91,10 @@ vector<TString> ExtractBranchList(TTree* fTree){
       continue;
     if(fbranch->GetLeaf("err")==NULL)
       continue;
-    if( ( fbranch->GetName() ).Contains("block"))
+    TString myName = fbranch->GetName();
+    if(myName.Contains("block"))
       continue;
-    fRet.push_back( fbranch->GetName() );
+    fRet.push_back( myName);
     
   }
   return fRet;

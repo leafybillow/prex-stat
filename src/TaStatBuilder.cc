@@ -57,20 +57,25 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
   
   if(dest.error==0){
     dest.mean = sign*input.mean;
-    if(kUseWeight)
+    if(kUseWeight){
       dest.error = weighting_errorbar;
-    else
+      dest.error_scaled = pow(input.error,2) * pow(weighting_errorbar,-4);
+    }else{
       dest.error = input.error;
+      dest.error_scaled = input.error_scaled;
+    }
   }else{
     Double_t mean1= dest.mean;
     Double_t weight1= pow(dest.error,-2);
     Double_t mean2 = sign*input.mean;
     Double_t weight2;
-    if(kUseWeight)
+    if(kUseWeight){
       weight2 = pow(weighting_errorbar,-2);
-    else
+      dest.error_scaled += (pow(input.error,2)*pow(weighting_errorbar,-4));
+    }else{
       weight2 = pow(input.error,-2);
-    
+      dest.error_scaled +=input.error_scaled;
+    }
     Double_t weight_sum = weight1+weight2;
     dest.mean = (mean1*weight1 + mean2*weight2)/weight_sum;
     dest.error =  sqrt(1.0/weight_sum);
@@ -133,6 +138,7 @@ void TaStatBuilder::UpdateCentralMoment(StatData &dest,
 
 StatData TaStatBuilder::GetNullAverage(StatData in1, StatData in2){
   StatData fRetStatData;
+  // cout << in1.sign << " \t " << in2.sign << endl;
   fRetStatData.mean = (in1.mean + in2.mean)/2.0;
   fRetStatData.error = sqrt(in1.error*in1.error+in2.error*in2.error)/2.0;
   return fRetStatData;
@@ -425,6 +431,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     iter_dev++;
   }
   c1.Print(filename+"]");
+  cout << " -- Done printing plots to " << filename << endl;
 }
 
 void TaStatBuilder::ReportLogByIHWP(TaResult &log){
@@ -490,6 +497,7 @@ void TaStatBuilder::ReportLog(TaResult &log){
     log.AddHeader(header);
     vector<TString> fLabel = GetStatDataLabelByName( *iter_device);
     StatDataArray fStatDataArray =GetStatDataArrayByName( *iter_device);
+    StatData fGrandAverage  = fAverageMap[*iter_device];
     Int_t nData = fLabel.size();
     for(int idata=0;idata<nData;idata++){
       log.AddLine();
@@ -500,6 +508,15 @@ void TaStatBuilder::ReportLog(TaResult &log){
       log.AddFloatEntry( fStatDataArray[idata].rms*rescale/1e3);
       log.AddChi2NDF(fStatDataArray[idata].chi2, fStatDataArray[idata].ndf);
     }
+    log.AddLine();
+    log.InsertHorizontalLine();
+    log.AddStringEntry(" ");
+    log.AddStringEntry("Grand Avg.");
+    log.AddFloatEntry( fGrandAverage.mean*rescale);
+    log.AddFloatEntry( fGrandAverage.error*rescale);
+    log.AddFloatEntry( fGrandAverage.rms*rescale/1e3);
+    log.AddChi2NDF(fGrandAverage.chi2, fGrandAverage.ndf);
+
     log.InsertHorizontalLine();
     iter_device++;
   }
@@ -550,4 +567,28 @@ Double_t TaStatBuilder::LoadScaleFactor(TString device_name,
     rms_unit = "(uV)";
   }
   return rescale ;
+}
+
+
+void TaStatBuilder::RescaleErrorBar(){
+  auto iter_dev = fDeviceNameList.begin();
+
+  while(iter_dev!=fDeviceNameList.end()){
+    StatData fAveraged = fAverageMap[*iter_dev];
+    Double_t weighted_error = fAveraged.error;
+    Double_t scaled_error_square_sum =  fAveraged.error_scaled;
+    Double_t scaled_factor =sqrt( scaled_error_square_sum)* weighted_error;
+    Double_t scaled_error = scaled_factor * weighted_error;
+    fAverageMap[*iter_dev].error = scaled_error;
+    Int_t nData = fStatDataArrayMap[*iter_dev].size();
+    for(int id=0;id<nData;id++)
+      fStatDataArrayMap[*iter_dev][id].error *= scaled_factor;
+    iter_dev++;
+  }
+}
+
+
+void TaStatBuilder::RescaleErrorBarBy( TaStatBuilder fGrandBuilder){
+
+  
 }
