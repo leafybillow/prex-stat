@@ -1,5 +1,10 @@
 #ifndef __TARESULTS_HH__
 #define __TARESULTS_HH__
+
+#include "TString.h"
+#include <iostream>
+#include <iomanip>
+#include <fstream>
 using namespace std;
 
 class TaRow{

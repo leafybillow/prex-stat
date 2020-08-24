@@ -1,5 +1,6 @@
 #include "TaRunInfo_v2.hh"
 ClassImp(TaRunInfo)
+
 TaRunInfo::TaRunInfo(){
   run_number = -1;
   slug_number = -1;

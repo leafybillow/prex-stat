@@ -1,6 +1,15 @@
 #ifndef __TaRunInfo_v2_hh_
 #define __TaRunInfo_v2_hh_
-class TaRunInfo: public TObject{
+
+#include "Rtypes.h"
+#include "TString.h"
+#include "TObjArray.h"
+#include "TObjString.h"
+
+#include <iostream>
+using namespace std;
+
+class TaRunInfo{
 public:
   TaRunInfo();
   virtual ~TaRunInfo(){};

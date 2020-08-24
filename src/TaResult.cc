@@ -1,5 +1,5 @@
 #include "TaResult.hh"
-#include <iomanip>
+
 ClassImp(TaResult);
 ClassImp(TaRow);
 

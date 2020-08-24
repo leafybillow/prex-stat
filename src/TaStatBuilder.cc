@@ -16,7 +16,7 @@ void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
   Double_t nsamples2 = 0.0;
   Double_t error2 = input.error;
   Double_t rms2 = input.rms;
-
+  
   if(input.num_samples==0)
     nsamples2= pow(rms2/error2,2);
   else
@@ -34,6 +34,7 @@ void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
   UpdateStatData(fAverageMap[chname],input,sign);
 
   input.mean = sign*input.mean;
+  input.sign = sign;
   fStatDataArrayMap[chname].push_back(input);
   fLabelMap[chname].push_back(fLabel_tmp);
 }
@@ -74,7 +75,7 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
     dest.mean = (mean1*weight1 + mean2*weight2)/weight_sum;
     dest.error =  sqrt(1.0/weight_sum);
   }
-
+  dest.sign = sign;
   UpdateCentralMoment(dest,input,sign);
 }
 
@@ -158,7 +159,7 @@ void TaStatBuilder::FillTree(TTree *fTree, TString prefix){
 
 void TaStatBuilder::UpdateStatBuilderByIHWP(TaStatBuilder finput,
 					    TString ihwp,Int_t sign){
-  fStatBuilderByIHWP[ihwp].UpdateStatBuilder(finput);
+  fStatBuilderByIHWP[ihwp].UpdateStatBuilder(finput,sign);
   UpdateStatBuilder(finput,sign);
 }
 
@@ -294,6 +295,11 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
       unit = "(nm)";
       rms_unit = "(um)";
     }
+    if( (*iter_dev).Contains("diff_evMon")){
+      rescale = 1e6;
+      unit = "(nm)";
+      rms_unit = "(um)";
+    }
     
     if( (*iter_dev).Contains("diff") &&
 	(*iter_dev).Contains("battery")	){
@@ -414,10 +420,134 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     for(int ibin=1;ibin<=npt;ibin++)
       htrms->GetXaxis()->SetBinLabel(ibin,fAxisTitle[x_val[ibin-1]]);
     g_rms.SetMarkerStyle(20);
-    g_rms.Draw("AP");
+    g_rms.Draw("APL");
     c2.Print(filename);
     iter_dev++;
   }
   c1.Print(filename+"]");
 }
 
+void TaStatBuilder::ReportLogByIHWP(TaResult &log){
+  auto iter_device = fDeviceNameList.begin();
+  while(iter_device!=fDeviceNameList.end()){
+    TString unit,rms_unit;
+    Double_t rescale  = LoadScaleFactor(*iter_device,unit, rms_unit);
+    vector<TString> header = { " " , "Mean"+unit,"Error"+unit, "RMS"+rms_unit, "Chi2/NDF"};
+    header.insert(header.begin(), *iter_device);
+    log.AddHeader(header);
+    vector<TString> fLabel = GetStatDataLabelByName( *iter_device);
+    StatDataArray fStatDataArray = GetStatDataArrayByName(*iter_device);
+    StatDataArray fStatDataArray_in =GetStatDataArrayByName( *iter_device,"IN");
+    StatDataArray fStatDataArray_out =GetStatDataArrayByName( *iter_device,"OUT");
+    StatData fGrandAverage  = fAverageMap[*iter_device];
+    Int_t nData = fLabel.size();
+    for(int idata=0;idata<nData;idata++){
+      log.AddLine();
+      log.AddStringEntry(" ");
+      log.AddStringEntry("IN");
+      log.AddFloatEntry( fStatDataArray_in[idata].mean*rescale);
+      log.AddFloatEntry( fStatDataArray_in[idata].error*rescale);
+      log.AddFloatEntry( fStatDataArray_in[idata].rms*rescale/1e3);
+      log.AddChi2NDF(fStatDataArray_in[idata].chi2, fStatDataArray_in[idata].ndf);
+      log.AddLine();
+      log.AddStringEntry(" ");
+      log.AddStringEntry("OUT");
+      log.AddFloatEntry( fStatDataArray_out[idata].mean*rescale);
+      log.AddFloatEntry( fStatDataArray_out[idata].error*rescale);
+      log.AddFloatEntry( fStatDataArray_out[idata].rms*rescale/1e3);
+      log.AddChi2NDF(fStatDataArray_out[idata].chi2, fStatDataArray_out[idata].ndf);
+      log.AddLine();
+      log.AddStringEntry(" ");
+      log.AddStringEntry( fLabel[idata] );
+      log.AddFloatEntry( fStatDataArray[idata].mean*rescale);
+      log.AddFloatEntry( fStatDataArray[idata].error*rescale);
+      log.AddFloatEntry( fStatDataArray[idata].rms*rescale/1e3);
+      log.AddChi2NDF(fStatDataArray[idata].chi2, fStatDataArray[idata].ndf);
+      log.InsertHorizontalLine();
+    }
+    log.AddLine();
+    log.AddStringEntry(" ");
+    log.AddStringEntry("Grand Avg.");
+    log.AddFloatEntry( fGrandAverage.mean*rescale);
+    log.AddFloatEntry( fGrandAverage.error*rescale);
+    log.AddFloatEntry( fGrandAverage.rms*rescale/1e3);
+    log.AddChi2NDF(fGrandAverage.chi2, fGrandAverage.ndf);
+    
+    log.InsertHorizontalLine();
+    iter_device++;
+  }
+  log.Print();
+  log.Close();
+}
+
+void TaStatBuilder::ReportLog(TaResult &log){
+  auto iter_device = fDeviceNameList.begin();
+  while(iter_device!=fDeviceNameList.end()){
+    TString unit,rms_unit;
+    Double_t rescale  = LoadScaleFactor(*iter_device,unit, rms_unit);
+    vector<TString> header = { " " , "Mean"+unit,"Error"+unit, "RMS"+rms_unit, "Chi2/NDF"};
+    header.insert(header.begin(), *iter_device);
+    log.AddHeader(header);
+    vector<TString> fLabel = GetStatDataLabelByName( *iter_device);
+    StatDataArray fStatDataArray =GetStatDataArrayByName( *iter_device);
+    Int_t nData = fLabel.size();
+    for(int idata=0;idata<nData;idata++){
+      log.AddLine();
+      log.AddStringEntry(" ");
+      log.AddStringEntry( fLabel[idata] );
+      log.AddFloatEntry( fStatDataArray[idata].mean*rescale);
+      log.AddFloatEntry( fStatDataArray[idata].error*rescale);
+      log.AddFloatEntry( fStatDataArray[idata].rms*rescale/1e3);
+      log.AddChi2NDF(fStatDataArray[idata].chi2, fStatDataArray[idata].ndf);
+    }
+    log.InsertHorizontalLine();
+    iter_device++;
+  }
+  log.Print();
+  log.Close();
+}
+
+Double_t TaStatBuilder::LoadScaleFactor(TString device_name,
+					TString &unit, TString &rms_unit){
+  Double_t rescale = 1.0;
+  if( device_name.Contains("asym")){
+    rescale = 1e9;
+    unit = "(ppb)";
+    rms_unit = "(ppm)";
+  }
+  if( device_name.Contains("Adet")){
+    rescale = 1e9;
+    unit = "(ppb)";
+    rms_unit = "(ppm)";
+  }
+  if( device_name.Contains("Aq")){
+    rescale = 1e9;
+    unit = "(ppb)";
+    rms_unit = "(ppm)";
+  }
+  if( device_name.Contains("diff_bpm")){
+    rescale = 1e6;
+    unit = "(nm)";
+    rms_unit = "(um)";
+  }
+  if( device_name.Contains("diff_evMon")){
+    rescale = 1e6;
+    unit = "(nm)";
+    rms_unit = "(um)";
+  }
+    
+  if( device_name.Contains("diff") &&
+      device_name.Contains("battery")	){
+    rescale = 1e9;
+    unit = "(nV)";
+    rms_unit = "(uV)";
+  }
+    
+  if( device_name.Contains("diff") &&
+      device_name.Contains("ch_battery")){
+    rescale = 76e-6*1e9;
+    unit = "(nV)";
+    rms_unit = "(uV)";
+  }
+  return rescale ;
+}

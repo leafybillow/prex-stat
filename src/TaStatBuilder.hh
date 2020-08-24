@@ -1,6 +1,22 @@
 #ifndef __TASTATBUILDER_HH__
 #define __TASTATBUILDER_HH__
 
+#include "TaResult.hh"
+#include "TaRunInfo_v2.hh"
+
+#include "TTree.h"
+#include "TBranch.h"
+#include "TLeaf.h"
+#include "TPad.h"
+#include "TH1F.h"
+#include "TH1D.h"
+#include "TGraph.h"
+#include "TGraphErrors.h"
+#include "TStyle.h"
+#include "TF1.h"
+#include "TCanvas.h"
+
+#include <map>
 class StatData{
 public:
   StatData(){ Zero(); };
@@ -13,7 +29,7 @@ public:
   Double_t m2;
   Double_t chi2;
   Double_t ndf;
-  
+  Int_t sign;
   TString tag;
   
   void Zero(){
@@ -25,14 +41,9 @@ public:
     m2 = 0.0;
     chi2 = 0.0;
     ndf = 0.0;
+    sign =1;
   };
-  void RegisterAddressByName_postpan(TBranch* aBranch){
-    aBranch->GetLeaf("mean")->SetAddress(&mean);
-    aBranch->GetLeaf("rms")->SetAddress(&rms);
-    aBranch->GetLeaf("err")->SetAddress(&error);
-  };
-  
-  void RegisterAddressByName_dither(TBranch* aBranch){
+  void RegisterAddressByName(TBranch* aBranch){
     aBranch->GetLeaf("mean")->SetAddress(&mean);
     aBranch->GetLeaf("rms")->SetAddress(&rms);
     aBranch->GetLeaf("err")->SetAddress(&error);
@@ -91,18 +102,24 @@ public:
 
   StatDataArray GetStatDataArrayByName(TString name){
     return fStatDataArrayMap[name];};
+  
   vector<TString> GetStatDataLabelByName(TString name){
     return fLabelMap[name];};
 
   StatDataArray GetStatDataArrayByName(TString name,TString ihwp){
     return  fStatBuilderByIHWP[ihwp].GetStatDataArrayByName(name);};
+  
   vector<TString> GetStatDataLabelByName(TString name,TString ihwp){
     return fStatBuilderByIHWP[ihwp].GetStatDataLabelByName(name);};
+  
   vector<TaStatBuilder> GetStatBuilderArray(){
     return fStatBuilderArray;
   };
   vector<TString> fDeviceNameList;
   
+  void ReportLog(TaResult &log);
+  void ReportLogByIHWP(TaResult &log);
+  Double_t LoadScaleFactor(TString, TString &, TString &);
 private:
   Double_t weighting_errorbar;
   Bool_t kUseWeight;

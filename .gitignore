@@ -1,5 +1,9 @@
 *root
 *pdf
 *~
+*.d
+*.o
+*.log
+*Dict.cc
 plots/
 onlineweb/
