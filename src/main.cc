@@ -89,9 +89,9 @@ int main(int argc, char** argv){
   map<SLUG_ARM,pair<TString,TString> > fSlugInfoMap;
   map<SLUG_ARM,Int_t > fSlugSignMap;
 
-  map<SLUG_ARM, TaStatBuilder > fSlugStatBuilderMap;
-  map<Int_t, TaStatBuilder > fPittsStatBuilderMap;
-  map<Int_t, TaStatBuilder > fWienStatBuilderMap;
+  map<SLUG_ARM, TaStatBuilder* > fSlugStatBuilderMap;
+  map<Int_t, TaStatBuilder* > fPittsStatBuilderMap;
+  map<Int_t, TaStatBuilder* > fWienStatBuilderMap;
   
   map<TString,StatData> fChannelMap;
 
@@ -144,7 +144,7 @@ int main(int argc, char** argv){
 	  detName  = maindet_switch[ myRunInfo.GetArmFlag() ];
 	
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
-	  TaStatBuilder fStatBuilder;
+	  TaStatBuilder *fStatBuilder = new TaStatBuilder();
 	  fSlugStatBuilderMap.insert(make_pair(myKey,fStatBuilder));
 	  fSlugInfoMap[myKey] = make_pair(myRunInfo.GetIHWPStatus(),
 					  myRunInfo.GetWienMode());
@@ -152,14 +152,14 @@ int main(int argc, char** argv){
 	}
       } // end if it is a new run number
       if(myRunInfo.GetRunFlag()=="Good"){
-	fSlugStatBuilderMap[myKey].SetLabel(Form("%d.%d",run_number,mini_id));
+	fSlugStatBuilderMap[myKey]->SetLabel(Form("%d.%d",run_number,mini_id));
 	if(detName!=""){
 	  if(kWeighted)
-	    fSlugStatBuilderMap[myKey].UpdateWeightingError(fChannelMap[detName]);
-	  fSlugStatBuilderMap[myKey].UpdateStatData("Adet",fChannelMap[detName]);
+	    fSlugStatBuilderMap[myKey]->UpdateWeightingError(fChannelMap[detName]);
+	  fSlugStatBuilderMap[myKey]->UpdateStatData("Adet",fChannelMap[detName]);
 	}
 	if(bcmName!="")
-	  fSlugStatBuilderMap[myKey].UpdateStatData("Aq",fChannelMap[bcmName]);
+	  fSlugStatBuilderMap[myKey]->UpdateStatData("Aq",fChannelMap[bcmName]);
 
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
@@ -180,7 +180,7 @@ int main(int argc, char** argv){
 	      continue;
 	    }
 	  }
-	  fSlugStatBuilderMap[myKey].UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
+	  fSlugStatBuilderMap[myKey]->UpdateStatData(*iter_dev,fChannelMap[*iter_dev]);
 	  iter_dev++;
 	}
       }else
@@ -219,19 +219,53 @@ int main(int argc, char** argv){
     if(kSignCorrection)
       mySpin=fSign;
     
-    (*iter_slug).second.PullFitAllChannels(plot_dir+output_tag+"_slug"+slug_label+output_suffix+".pdf");
-    (*iter_slug).second.FillTree(fSlugTree);
-    fSlugTree->Fill();
+    (*iter_slug).second->SetPlotFileName(plot_dir+output_tag+"_slug"+slug_label+output_suffix+".pdf");
+    if(!kWeighted){
+      (*iter_slug).second->PullFitAllChannels();
+      (*iter_slug).second->FillTree(fSlugTree);
+      fSlugTree->Fill();
+    }
+    fSlugStatBuilder.SetLabel(slug_label);
+    fSlugStatBuilder.UpdateStatBuilder((*iter_slug).second,mySpin);
+    iter_slug++;
+  }
+
+  if(kWeighted)
+    fSlugStatBuilder.RescaleErrorBar();
+
+  fSlugStatBuilder.PullFitAllChannels(output_tag+"_slugs_pullfit"+output_suffix+".pdf");
+  fSlugStatBuilder.ReportLog(fSlugLog);
+  // Builder Pitts and Wiens Statbuilders
+  iter_slug = fSlugStatBuilderMap.begin();
+  while(iter_slug!=fSlugStatBuilderMap.end()){
+    fSlugID = ((*iter_slug).first).first;
+    TString slug_label = Form("%.0f",fSlugID);
+    fArmSlug = ((*iter_slug).first).second;
+    fSlugID += fArmSlug/10.0;
+    if(fArmSlug==1)
+      slug_label+="R";
+    else if(fArmSlug==2)
+      slug_label+="L";
+    fSign = fSlugSignMap[(*iter_slug).first];
+    Double_t mySpin = 1.0;
+    if(kSignCorrection)
+      mySpin=fSign;
+    if(kWeighted){
+      (*iter_slug).second->FillTree(fSlugTree);
+      fSlugTree->Fill();
+    }
     Int_t pittsID = fPittMap[(*iter_slug).first];
     TString IHWP_state = (fSlugInfoMap[(*iter_slug).first]).first;
     TString Wien_state = (fSlugInfoMap[(*iter_slug).first]).second;
-    fSlugStatBuilder.SetLabel(slug_label);
-    fSlugStatBuilder.UpdateStatBuilder((*iter_slug).second,mySpin);
     if(pittsID!=-1){
-      fPittsStatBuilderMap[pittsID].SetLabel(slug_label);
-      fPittsStatBuilderMap[pittsID].UpdateStatBuilderByIHWP( (*iter_slug).second,
-							     IHWP_state,
-							     mySpin);
+      if(fPittsStatBuilderMap.find(pittsID)==fPittsStatBuilderMap.end()){
+	TaStatBuilder *fStatBuilder  = new TaStatBuilder();
+	fPittsStatBuilderMap[pittsID] = fStatBuilder;
+      }
+      fPittsStatBuilderMap[pittsID]->SetLabel(slug_label);
+      fPittsStatBuilderMap[pittsID]->UpdateStatBuilderByIHWP((*iter_slug).second,
+      							     IHWP_state,
+      							     mySpin);
     }
     if(Wien_state!=last_wien_state){
       wien_string.push_back(Wien_state);
@@ -239,20 +273,20 @@ int main(int argc, char** argv){
       last_wien_state = Wien_state;
     }
     cout << " -- Fill Wien StatBuilder with slug " << slug_label << endl;
-    fWienStatBuilderMap[wienID].SetLabel(slug_label);
-    fWienStatBuilderMap[wienID].UpdateStatBuilderByIHWP( (*iter_slug).second,
-							 IHWP_state,
-							 mySpin);
+    if(fWienStatBuilderMap.find(wienID)==fWienStatBuilderMap.end()){
+      TaStatBuilder *fStatBuilder = new TaStatBuilder();
+      fWienStatBuilderMap[wienID] = fStatBuilder;
+    }
+    fWienStatBuilderMap[wienID]->SetLabel(slug_label);
+    fWienStatBuilderMap[wienID]->UpdateStatBuilderByIHWP((*iter_slug).second,
+    							 IHWP_state,
+    							 mySpin);
     iter_slug++;
   }
-  if(kWeighted)
-    fSlugStatBuilder.RescaleErrorBar();
-  fSlugStatBuilder.PullFitAllChannels(output_tag+"_slugs_pullfit"+output_suffix+".pdf");
-  fSlugStatBuilder.ReportLog(fSlugLog);
-  
+  // END of building pitts and wien stats 
   TaStatBuilder fPittsStatBuilder;
   TaStatBuilder fPittsNullStatBuilder;
-  map<Int_t,TaStatBuilder> fPittsNullStatMap;
+  map<Int_t,TaStatBuilder*> fPittsNullStatMap;
   TTree *fPittsTree = new TTree("pitt","Pitts Averages");
   Int_t fPittsID;
   fPittsTree->Branch("pitt",&fPittsID);
@@ -260,32 +294,30 @@ int main(int argc, char** argv){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     fPittsStatBuilder.SetLabel(Form("%d",fPittsID));
-    (*iter_pitts).second.PullFitAllChannels(plot_dir+output_tag+Form("_Pitt%d",fPittsID)+output_suffix+".pdf");
-    fPittsStatBuilder.UpdateStatBuilder((*iter_pitts).second);
-    ((*iter_pitts).second).FillTree(fPittsTree);
-    
-    TaStatBuilder fNullStat =(*iter_pitts).second.GetNullStatBuilder();
-    fPittsNullStatMap[fPittsID] = fNullStat;
-    fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
-    fPittsNullStatBuilder.UpdateStatBuilder(fNullStat);
-    fNullStat.FillTree(fPittsTree,"null_");
+    (*iter_pitts).second->PullFitAllChannels(plot_dir+output_tag+Form("_Pitt%d",fPittsID)+output_suffix+".pdf");
+    (*iter_pitts).second->PullFitAllChannelsByIHWP();
+    fPittsStatBuilder.UpdateStatBuilder( (*iter_pitts).second );
+    ((*iter_pitts).second)->FillTree(fPittsTree);
+    // TaStatBuilder* fNullStat =(*iter_pitts).second->GetNullStatBuilder();
+    // fPittsNullStatMap[fPittsID] = fNullStat;
+    // fPittsNullStatBuilder.SetLabel(Form("%d",fPittsID));
+    // fPittsNullStatBuilder.UpdateStatBuilder(fNullStat);
+    // fNullStat->FillTree(fPittsTree,"null_");
     fPittsTree->Fill();
     iter_pitts++;
   }
   
-  if(kWeighted)
-    fPittsStatBuilder.RescaleErrorBar();
   // FIXME for NULL average 
   fPittsStatBuilder.PullFitAllChannels(output_tag+"_pitts_pullfit"+output_suffix+".pdf");
-  fPittsNullStatBuilder.PullFitAllChannels(output_tag+"_pitts_null_pullfit"+output_suffix+".pdf");
+  // fPittsNullStatBuilder.PullFitAllChannels(output_tag+"_pitts_null_pullfit"+output_suffix+".pdf");
 
   TaResult fPittLog(output_tag+"_average_by_pitt"+output_suffix+".log");
   fPittsStatBuilder.ReportLog(fPittLog);
-  TaResult fPittLog_null(output_tag+"_null_by_pitt"+output_suffix+".log");
-  fPittsNullStatBuilder.ReportLog(fPittLog_null);
+  // TaResult fPittLog_null(output_tag+"_null_by_pitt"+output_suffix+".log");
+  // fPittsNullStatBuilder.ReportLog(fPittLog_null);
   
   TaStatBuilder fWienStatBuilder;
-  map<Int_t,TaStatBuilder> fWienNullStateMap;
+  // map<Int_t,TaStatBuilder*> fWienNullStateMap;
   TTree *fWienTree = new TTree("wien","Wien Averages");
   Int_t fWienID;
   fWienTree->Branch("wien",&fWienID);
@@ -293,22 +325,22 @@ int main(int argc, char** argv){
   while(iter_wien!=fWienStatBuilderMap.end()){
     fWienID = (*iter_wien).first;
     fWienStatBuilder.SetLabel( wien_string[fWienID] );
-    (*iter_wien).second.PullFitAllChannels(Form("./plots/%s_Wien%d_%s.pdf",
+    (*iter_wien).second->PullFitAllChannels(Form("./plots/%s_Wien%d_%s.pdf",
 						output_tag.Data(),fWienID,
 						wien_string[fWienID].Data()));
-    (*iter_wien).second.PullFitAllChannelsByIHWP("buff.pdf");
+    (*iter_wien).second->PullFitAllChannelsByIHWP();
     
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
-    (*iter_wien).second.FillTree(fWienTree);
+    (*iter_wien).second->FillTree(fWienTree);
     
-    TaStatBuilder fNullStat = (*iter_wien).second.GetNullStatBuilder();
-    fWienNullStateMap[fWienID] = fNullStat;
-    fNullStat.FillTree(fWienTree,"null_");
+    // TaStatBuilder* fNullStat = (*iter_wien).second->GetNullStatBuilder();
+    // fWienNullStateMap[fWienID] = fNullStat;
+    // fNullStat->FillTree(fWienTree,"null_");
     fWienTree->Fill();
     iter_wien++;
   }
-  if(kWeighted)
-    fWienStatBuilder.RescaleErrorBar();
+  // if(kWeighted)
+  //   fWienStatBuilder.RescaleErrorBar();
   TaResult fWienLog(output_tag+"_average_by_wien"+output_suffix+".log");
   fWienStatBuilder.PullFitAllChannels(output_tag+"_wien_pullfit"+output_suffix+".pdf");
   fWienStatBuilder.ReportLogByIHWP(fWienLog);

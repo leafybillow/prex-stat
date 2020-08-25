@@ -63,11 +63,11 @@ public:
   TaStatBuilder();
   virtual ~TaStatBuilder(){};
 
-  void UpdateStatBuilder(TaStatBuilder,Int_t sign=1);
-  void UpdateStatBuilderByIHWP(TaStatBuilder,TString,Int_t sign=1);
+  void UpdateStatBuilder(TaStatBuilder*,Int_t sign=1);
+  void UpdateStatBuilderByIHWP(TaStatBuilder*,TString,Int_t sign=1);
   void Process();
   void CalcAverages();
-  TaStatBuilder GetNullStatBuilder();
+  TaStatBuilder* GetNullStatBuilder();
   Bool_t HasStatBuilderByIHWP(){
     if(fStatBuilderByIHWP.find("IN")!=fStatBuilderByIHWP.end() &&
        fStatBuilderByIHWP.find("OUT")!=fStatBuilderByIHWP.end())
@@ -75,7 +75,7 @@ public:
     else
       return kFALSE;
   }
-  TaStatBuilder GetStatBuilderByIHWP(TString ihwp){
+  TaStatBuilder* GetStatBuilderByIHWP(TString ihwp){
     return fStatBuilderByIHWP[ihwp];
   };
   
@@ -89,19 +89,26 @@ public:
   // void UpdateCentralMoment(TString chname,StatData input,Int_t sign=1);
   
   StatData GetNullAverage(StatData in1,StatData in2);
-  
-  void PullFitAllChannels(TString filename);
-  void PullFitAllChannelsByIHWP(TString filename){
-    if(fStatBuilderByIHWP.find("IN")!=fStatBuilderByIHWP.end())
-      fStatBuilderByIHWP["IN"].PullFitAllChannels(filename);
-    if(fStatBuilderByIHWP.find("OUT")!=fStatBuilderByIHWP.end())
-      fStatBuilderByIHWP["OUT"].PullFitAllChannels(filename);
+
+  void SetPlotFileName(TString filename){
+    plot_filename = filename;
+  }
+  void PullFitAllChannels(TString filename="");
+  void PullFitAllChannelsByIHWP(){
+    if(fStatBuilderByIHWP.find("IN")!=fStatBuilderByIHWP.end()){
+      TString filename = plot_filename;
+      filename.ReplaceAll(".pdf","_hwp_in.pdf");
+      fStatBuilderByIHWP["IN"]->PullFitAllChannels(filename);
+    }
+    if(fStatBuilderByIHWP.find("OUT")!=fStatBuilderByIHWP.end()){
+      TString filename = plot_filename;
+      filename.ReplaceAll(".pdf","_hwp_out.pdf");
+      fStatBuilderByIHWP["OUT"]->PullFitAllChannels(filename);
+    }
   };
   void FillTree(TTree *,TString prefix="");
   void ProcessNullAsym(TTree*);
   void SetLabel(TString input){ fLabel_tmp = input;};
-  map<TString,StatData> fAverageMap;
-
   StatDataArray GetStatDataArrayByName(TString name){
     return fStatDataArrayMap[name];};
   
@@ -109,30 +116,34 @@ public:
     return fLabelMap[name];};
 
   StatDataArray GetStatDataArrayByName(TString name,TString ihwp){
-    return  fStatBuilderByIHWP[ihwp].GetStatDataArrayByName(name);};
+    return  fStatBuilderByIHWP[ihwp]->GetStatDataArrayByName(name);};
   
   vector<TString> GetStatDataLabelByName(TString name,TString ihwp){
-    return fStatBuilderByIHWP[ihwp].GetStatDataLabelByName(name);};
+    return fStatBuilderByIHWP[ihwp]->GetStatDataLabelByName(name);};
   
-  vector<TaStatBuilder> GetStatBuilderArray(){
+  vector<TaStatBuilder*> GetStatBuilderArray(){
     return fStatBuilderArray;
   };
-  vector<TString> fDeviceNameList;
-  
+
   void ReportLog(TaResult &log);
   void ReportLogByIHWP(TaResult &log);
   Double_t LoadScaleFactor(TString, TString &, TString &);
   void RescaleErrorBar();
+  void RescaleErrorBarBy(TaStatBuilder*);
+  
+  map<TString,StatData> fAverageMap;  
+  vector<TString> fDeviceNameList;
+  map<TString, StatDataArray> fStatDataArrayMap;
+  map<TString, vector<TString> >fLabelMap;
+  
 private:
   Double_t weighting_errorbar;
   Bool_t kUseWeight;
   Int_t fSign;
-  
-  map<TString, StatDataArray> fStatDataArrayMap;
-  map<TString, vector<TString> >fLabelMap;
+  TString plot_filename;
   TString fLabel_tmp;
-  map<TString,TaStatBuilder> fStatBuilderByIHWP;
-  vector<TaStatBuilder> fStatBuilderArray;
+  map<TString,TaStatBuilder*> fStatBuilderByIHWP;
+  vector<TaStatBuilder*> fStatBuilderArray;
   //FIXME: NOT in used so far
   vector<TString> fIVNameList; 
   vector<TString> fDVNameList;
