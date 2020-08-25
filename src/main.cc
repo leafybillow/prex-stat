@@ -232,7 +232,7 @@ int main(int argc, char** argv){
 
   if(kWeighted)
     fSlugStatBuilder.RescaleErrorBar();
-
+  fSlugStatBuilder.ReloadChi2NDF();
   fSlugStatBuilder.PullFitAllChannels(output_tag+"_slugs_pullfit"+output_suffix+".pdf");
   fSlugStatBuilder.ReportLog(fSlugLog);
   // Builder Pitts and Wiens Statbuilders

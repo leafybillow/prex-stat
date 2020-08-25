@@ -130,7 +130,7 @@ public:
   Double_t LoadScaleFactor(TString, TString &, TString &);
   void RescaleErrorBar();
   void RescaleErrorBarBy(TaStatBuilder*);
-  
+  void ReloadChi2NDF();
   map<TString,StatData> fAverageMap;  
   vector<TString> fDeviceNameList;
   map<TString, StatDataArray> fStatDataArrayMap;

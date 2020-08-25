@@ -614,7 +614,9 @@ void TaStatBuilder::RescaleErrorBar(){
     (*iter_fsb)->RescaleErrorBarBy(this);
     iter_fsb++;
   }
+}
 
+void Tastatbuilder::ReloadChi2NDF(){
   iter_dev = fDeviceNameList.begin();
 
   while(iter_dev!=fDeviceNameList.end()){
@@ -625,9 +627,8 @@ void TaStatBuilder::RescaleErrorBar(){
     }
     iter_dev++;
   }
+  
 }
-
-
 void TaStatBuilder::RescaleErrorBarBy( TaStatBuilder* fGrandBuilder){
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
