@@ -52,7 +52,21 @@ public:
   };
   
   void SetChi2NDF(Double_t a,Double_t b){ chi2=a;ndf=b;};
-  
+  StatData MultiplyBySlope(Double_t slope){
+    StatData fRet;
+    fRet.mean = mean * slope;
+    fRet.error = fabs(slope)*error;
+    fRet.error_scaled = fabs(slope)*error_scaled;
+    fRet.mean_sum = mean_sum*slope;
+    fRet.rms = rms*fabs(slope);
+    fRet.num_samples = num_samples;
+    fRet.m2 = pow(slope,2)*m2;
+    fRet.chi2 = chi2;
+    fRet.ndf = ndf;
+    fRet.sign = sign;
+    fRet.tag = "corr_"+tag;
+    return fRet;
+  };
   ClassDef(StatData,0);
 };
 

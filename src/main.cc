@@ -36,6 +36,7 @@ int main(int argc, char** argv){
   TString output_tag  = fConfig->GetParameter("output_tag");
   TString output_suffix  = fConfig->GetParameter("output_suffix");
   TString plot_dir = fConfig->GetParameter("plot_dir");
+  TString project_dir = fConfig->GetParameter("project_dir");
   
   TString input_path = fConfig->GetParameter("input_path");
   TString input_prefix = fConfig->GetParameter("input_prefix");
@@ -58,7 +59,7 @@ int main(int argc, char** argv){
   vector<TString> fDeviceNameList;
   if( (fConfig->GetParameter("device_list"))!="") {
     fDeviceNameList = fConfig->GetParameterList("device_list");
-  }else{
+  }else{ // otherwise Union all channels into grand averages 
     for(int islug=1;islug<=94;islug++){
       TString file_name = Form("%s/%sslug%d%s.root",
 			       input_path.Data(),
@@ -79,6 +80,27 @@ int main(int argc, char** argv){
       input_file->Close();
     } // end of loop over slugs
   }
+  
+  vector<TString> fIVnames = fConfig->GetParameterList("iv_list");
+  vector<TString> fDVnames = fConfig->GetParameterList("dv_list");
+  vector<TString> dv_switch = fConfig->GetParameterList("dv_switch");
+
+  Int_t nDV = fDVnames.size();
+  Int_t nIV = fIVnames.size();
+  map<TString , Double_t > fSlopeMap;
+  vector<TString> fSlopeNames(nDV*nIV);
+  for(int iiv=0;iiv<nIV;iiv++){
+    if( find(fDeviceNameList.begin(),fDeviceNameList.end(), "diff_" + fIVnames[iiv] ) == fDeviceNameList.end())
+      fDeviceNameList.push_back( "diff_"+fIVnames[iiv] ) ;
+  }
+  for(int idv=0;idv<nDV;idv++){
+    for(int iiv=0;iiv<nIV;iiv++){
+      fDeviceNameList.push_back( Form("corr_%s_%s",fDVnames[idv].Data(),fIVnames[iiv].Data()));
+      fSlopeNames[idv*nIV+iiv]= Form("%s_%s",fDVnames[idv].Data(),fIVnames[iiv].Data());
+      fSlopeMap[ fSlopeNames[idv*nIV+iiv] ] = 0.0;
+    }
+  }
+  
   cout << " -- Device List " << endl;
   Int_t nDev = fDeviceNameList.size();
   for(int idev=0;idev<nDev;idev++){
@@ -124,6 +146,17 @@ int main(int argc, char** argv){
     mini_tree->SetBranchAddress(run_counter,&run_number);
     mini_tree->SetBranchAddress(minirun_counter,&mini_id);
     RegisterBranchesAddress(mini_tree,fDeviceNameList,fChannelMap);
+    for(int idv =0; idv<nDV;idv++){
+      for(int iiv=0; iiv < nIV;iiv++){
+	if( mini_tree->GetBranch(fSlopeNames[idv*nIV+iiv])==NULL){
+	  cout << " ++ slope " << fSlopeNames[idv*nIV+iiv] << " is not found" << endl;
+	  fSlopeMap[fSlopeNames[idv*nIV+iiv]] = 0.0;
+	}
+	else
+	  mini_tree->SetBranchAddress( fSlopeNames[idv*nIV+iiv],
+				       &fSlopeMap[fSlopeNames[idv*nIV+iiv]]);
+      }
+    }
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
     TString detName = "";
@@ -134,6 +167,16 @@ int main(int argc, char** argv){
 	cerr << "-- run info not found for run  "
 	     << run_number << " and will skip "  << endl;
 	continue;
+      }
+      
+      // Scale Correction StatData from ivs
+      for(int idv=0;idv<nDV;idv++){
+	for(int iiv=0;iiv<nIV;iiv++){
+	  TString slope_name = fSlopeNames[idv*nIV+iiv];
+	  TString channel_name = "corr_"+slope_name;
+	  TString iv_channel = "diff_"+fIVnames[iiv];
+	  fChannelMap[channel_name] =  fChannelMap[iv_channel].MultiplyBySlope(fSlopeMap[slope_name]);
+	}
       }
       if(run_number!=last_run_number){
 	myRunInfo = fRunInfoMap[run_number];
@@ -151,16 +194,28 @@ int main(int argc, char** argv){
 	  fSlugSignMap[myKey] = myRunInfo.GetSign();
 	}
       } // end if it is a new run number
+      
       if(myRunInfo.GetRunFlag()=="Good"){
 	fSlugStatBuilderMap[myKey]->SetLabel(Form("%d.%d",run_number,mini_id));
 	if(detName!=""){
 	  if(kWeighted)
 	    fSlugStatBuilderMap[myKey]->UpdateWeightingError(fChannelMap[detName]);
 	  fSlugStatBuilderMap[myKey]->UpdateStatData("Adet",fChannelMap[detName]);
+	  if(dv_switch.size()==3){
+	    TString dvName  = dv_switch[ myRunInfo.GetArmFlag() ];
+	    for(int iiv=0;iiv<nIV;iiv++){
+	      TString slope_name = dvName +"_"+fIVnames[iiv];
+	      TString iv_channel = "diff_"+fIVnames[iiv];
+	      StatData crtn =  fChannelMap[iv_channel].MultiplyBySlope(fSlopeMap[slope_name]);
+	      fSlugStatBuilderMap[myKey]->UpdateStatData("corr_Adet_"+fIVnames[iiv],
+							 crtn);
+	    }
+	  }
+
 	}
 	if(bcmName!="")
 	  fSlugStatBuilderMap[myKey]->UpdateStatData("Aq",fChannelMap[bcmName]);
-
+	
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  if( myRunInfo.GetArmFlag()==1 ){
@@ -188,8 +243,8 @@ int main(int argc, char** argv){
     } // end of minirun loop inside a slug
     input_file->Close();
   }// end of slug loop
-  TString output_filename = Form("prex_grand_average_%s%s.root",
-				 output_tag.Data(),output_suffix.Data());
+  TString output_filename = Form("%sprex_grand_average_%s%s.root",
+				 project_dir.Data(),output_tag.Data(),output_suffix.Data());
   TFile *output_rf =  TFile::Open(output_filename,"RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
@@ -204,7 +259,7 @@ int main(int argc, char** argv){
   TString last_wien_state="";
   vector<TString> wien_string;
   TaStatBuilder fSlugStatBuilder;
-  TaResult fSlugLog(output_tag+"_average_by_slug"+output_suffix+".log");  
+  TaResult fSlugLog(project_dir+output_tag+"_average_by_slug"+output_suffix+".log");  
   while(iter_slug!=fSlugStatBuilderMap.end()){
     fSlugID = ((*iter_slug).first).first;
     TString slug_label = Form("%.0f",fSlugID);
@@ -233,7 +288,7 @@ int main(int argc, char** argv){
   if(kWeighted)
     fSlugStatBuilder.RescaleErrorBar();
   fSlugStatBuilder.ReloadChi2NDF();
-  fSlugStatBuilder.PullFitAllChannels(output_tag+"_slugs_pullfit"+output_suffix+".pdf");
+  fSlugStatBuilder.PullFitAllChannels(project_dir+output_tag+"_slugs_pullfit"+output_suffix+".pdf");
   fSlugStatBuilder.ReportLog(fSlugLog);
   // Builder Pitts and Wiens Statbuilders
   iter_slug = fSlugStatBuilderMap.begin();
@@ -308,10 +363,10 @@ int main(int argc, char** argv){
   }
   
   // FIXME for NULL average 
-  fPittsStatBuilder.PullFitAllChannels(output_tag+"_pitts_pullfit"+output_suffix+".pdf");
+  fPittsStatBuilder.PullFitAllChannels(project_dir+output_tag+"_pitts_pullfit"+output_suffix+".pdf");
   // fPittsNullStatBuilder.PullFitAllChannels(output_tag+"_pitts_null_pullfit"+output_suffix+".pdf");
 
-  TaResult fPittLog(output_tag+"_average_by_pitt"+output_suffix+".log");
+  TaResult fPittLog(project_dir+output_tag+"_average_by_pitt"+output_suffix+".log");
   fPittsStatBuilder.ReportLog(fPittLog);
   // TaResult fPittLog_null(output_tag+"_null_by_pitt"+output_suffix+".log");
   // fPittsNullStatBuilder.ReportLog(fPittLog_null);
@@ -325,9 +380,9 @@ int main(int argc, char** argv){
   while(iter_wien!=fWienStatBuilderMap.end()){
     fWienID = (*iter_wien).first;
     fWienStatBuilder.SetLabel( wien_string[fWienID] );
-    (*iter_wien).second->PullFitAllChannels(Form("./plots/%s_Wien%d_%s.pdf",
-						output_tag.Data(),fWienID,
-						wien_string[fWienID].Data()));
+    (*iter_wien).second->PullFitAllChannels(Form("%s/%s_Wien%d_%s.pdf",
+						 plot_dir.Data(),output_tag.Data(),fWienID,
+						 wien_string[fWienID].Data()));
     (*iter_wien).second->PullFitAllChannelsByIHWP();
     
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
@@ -339,10 +394,8 @@ int main(int argc, char** argv){
     fWienTree->Fill();
     iter_wien++;
   }
-  // if(kWeighted)
-  //   fWienStatBuilder.RescaleErrorBar();
-  TaResult fWienLog(output_tag+"_average_by_wien"+output_suffix+".log");
-  fWienStatBuilder.PullFitAllChannels(output_tag+"_wien_pullfit"+output_suffix+".pdf");
+  TaResult fWienLog(project_dir+output_tag+"_average_by_wien"+output_suffix+".log");
+  fWienStatBuilder.PullFitAllChannels(project_dir+output_tag+"_wien_pullfit"+output_suffix+".pdf");
   fWienStatBuilder.ReportLogByIHWP(fWienLog);
   TTree *fGrandTree = new TTree("grand", "Grand Averages");
   fWienStatBuilder.FillTree(fGrandTree);

@@ -78,7 +78,6 @@ void RegisterBranchesAddress(TTree *aTree,
 
 }
 
-
 vector<TString> ExtractBranchList(TTree* fTree){
   vector<TString> fRet;
   auto fBranchList = fTree->GetListOfBranches();

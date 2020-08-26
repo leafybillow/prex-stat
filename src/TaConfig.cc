@@ -73,7 +73,7 @@ vector<TString> TaConfig::ConvertToArray(TString sline){
       TString fEntry = (((TObjString*)(token->At(ievt)))->GetString());
       fRet.push_back(fEntry);
     }
-  } else
+  } else if(sline!="")
     fRet.push_back(sline);
   
   return fRet;

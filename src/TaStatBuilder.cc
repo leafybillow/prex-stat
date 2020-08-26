@@ -299,46 +299,7 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     Double_t rescale = 1.0;
     TString unit;
     TString rms_unit;
-    if( (*iter_dev).Contains("asym")){
-      rescale = 1e9;
-      unit = "(ppb)";
-      rms_unit = "(ppm)";
-    }
-    if( (*iter_dev).Contains("Adet")){
-      rescale = 1e9;
-      unit = "(ppb)";
-      rms_unit = "(ppm)";
-    }
-    if( (*iter_dev).Contains("Aq")){
-      rescale = 1e9;
-      unit = "(ppb)";
-      rms_unit = "(ppm)";
-    }
-    if( (*iter_dev).Contains("diff_bpm")){
-      rescale = 1e6;
-      unit = "(nm)";
-      rms_unit = "(um)";
-    }
-    if( (*iter_dev).Contains("diff_evMon")){
-      rescale = 1e6;
-      unit = "(nm)";
-      rms_unit = "(um)";
-    }
-    
-    if( (*iter_dev).Contains("diff") &&
-	(*iter_dev).Contains("battery")	){
-      rescale = 1e9;
-      unit = "(nV)";
-      rms_unit = "(uV)";
-    }
-    
-    if( (*iter_dev).Contains("diff") &&
-	(*iter_dev).Contains("ch_battery")){
-      rescale = 76e-6*1e9;
-      unit = "(nV)";
-      rms_unit = "(uV)";
-    }
-
+    rescale = LoadScaleFactor(*iter_dev, unit, rms_unit);
     auto iter_data = fStatDataArray.begin();
     while(iter_data!=fStatDataArray.end()){
       if((*iter_data).error>0.0){
@@ -370,7 +331,11 @@ void TaStatBuilder::PullFitAllChannels(TString filename){
     p1.cd();
     p1.UseCurrentStyle();
     p1.SetBottomMargin(0);
-    
+    p1.SetLeftMargin(0.05);
+    p2.SetLeftMargin(0.05);
+    p1.SetRightMargin(0.01);
+    p2.SetRightMargin(0.01);
+    p3.SetLeftMargin(0.01);
     Int_t npt = x_val.size();
     Double_t *x_array = new Double_t[npt];
     Double_t *y_array = new Double_t[npt];
@@ -545,7 +510,7 @@ void TaStatBuilder::ReportLog(TaResult &log){
 Double_t TaStatBuilder::LoadScaleFactor(TString device_name,
 					TString &unit, TString &rms_unit){
   Double_t rescale = 1.0;
-  if( device_name.Contains("asym")){
+  if( device_name.Contains("asym") || device_name.Contains("corr")){
     rescale = 1e9;
     unit = "(ppb)";
     rms_unit = "(ppm)";
@@ -616,9 +581,8 @@ void TaStatBuilder::RescaleErrorBar(){
   }
 }
 
-void Tastatbuilder::ReloadChi2NDF(){
-  iter_dev = fDeviceNameList.begin();
-
+void TaStatBuilder::ReloadChi2NDF(){
+  auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
     Int_t nData = fStatDataArrayMap[*iter_dev].size();
     for(int id=0;id<nData;id++){
