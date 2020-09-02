@@ -55,12 +55,19 @@ int main(int argc, char** argv){
   Bool_t kWeighted = kFALSE;
   if(maindet_weighted=="true")
     kWeighted = kTRUE;
+
+  Int_t slug_begin = (fConfig->GetParameter("slug_begin")).Atoi();
+  Int_t slug_end = (fConfig->GetParameter("slug_end")).Atoi();
+  if( slug_begin == 0)
+    slug_begin = 1;
+  if(slug_end ==0 )
+    slug_end = 94;
   
   vector<TString> fDeviceNameList;
   if( (fConfig->GetParameter("device_list"))!="") {
     fDeviceNameList = fConfig->GetParameterList("device_list");
   }else{ // otherwise Union all channels into grand averages 
-    for(int islug=1;islug<=94;islug++){
+    for(int islug=slug_begin;islug<=slug_end;islug++){
       TString file_name = Form("%s/%sslug%d%s.root",
 			       input_path.Data(),
 			       input_prefix.Data(),islug,input_suffix.Data());
@@ -117,7 +124,7 @@ int main(int argc, char** argv){
   
   map<TString,StatData> fChannelMap;
 
-  for(int islug=1;islug<=94;islug++){
+  for(int islug=slug_begin;islug<=slug_end;islug++){
     TString file_name = Form("%s/%sslug%d%s.root",
 			     input_path.Data(),
 			     input_prefix.Data(),islug,input_suffix.Data());
