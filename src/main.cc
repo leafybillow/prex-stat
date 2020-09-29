@@ -33,15 +33,23 @@ int main(int argc, char** argv){
   
   TaConfig *fConfig= new TaConfig();
   fConfig->ParseFile(confFileName);
-  TString output_tag  = fConfig->GetParameter("output_tag");
-  TString output_suffix  = fConfig->GetParameter("output_suffix");
+  TString format_text = fConfig->GetParameter("output_format") ;
+  const char* output_format = (const char*)format_text;
+  cout << "output_format : " << output_format << endl;
+  
   TString plot_dir = fConfig->GetParameter("plot_dir");
   TString project_dir = fConfig->GetParameter("project_dir");
-  
+  cout << "project_dir : " << project_dir << endl;
   TString input_path = fConfig->GetParameter("input_path");
-  TString input_prefix = fConfig->GetParameter("input_prefix");
-  TString input_suffix = fConfig->GetParameter("input_suffix");
+
+  TString input_format_text = fConfig->GetParameter("input_format");
+  const char*  input_format = (const char*)input_format_text;
+  cout << "input_format : " << input_format << endl;
+
   vector<TString> fTreeList = fConfig->GetParameterList("input_tree");
+
+  TString friend_format = fConfig->GetParameter("friend_format");
+  vector<TString> fFriendTreeList = fConfig->GetParameterList("friend_tree");
   TString run_counter = fConfig->GetParameter("run_counter");
   TString minirun_counter =fConfig->GetParameter("minirun_counter");
   
@@ -51,6 +59,7 @@ int main(int argc, char** argv){
     kSignCorrection = kTRUE;
 
   vector<TString> maindet_switch = fConfig->GetParameterList("maindet_switch");
+  vector<TString> rawAdet_switch = fConfig->GetParameterList("rawAdet_switch");
   TString maindet_weighted = fConfig->GetParameter("maindet_weighted");
   Bool_t kWeighted = kFALSE;
   if(maindet_weighted=="true")
@@ -68,12 +77,10 @@ int main(int argc, char** argv){
     fDeviceNameList = fConfig->GetParameterList("device_list");
   }else{ // otherwise Union all channels into grand averages 
     for(int islug=slug_begin;islug<=slug_end;islug++){
-      TString file_name = Form("%s/%sslug%d%s.root",
-			       input_path.Data(),
-			       input_prefix.Data(),islug,input_suffix.Data());
-      TFile* input_file = TFile::Open(file_name);
+      TString file_name = Form(input_format,islug);
+      TFile* input_file = TFile::Open(input_path+file_name);
       if(input_file==NULL){
-	cerr <<  file_name << " is not found and is skipped" << endl;
+	cerr <<  input_path+file_name << " is not found and is skipped" << endl;
 	continue;
       }
       Int_t nTree = fTreeList.size();
@@ -125,15 +132,13 @@ int main(int argc, char** argv){
   map<TString,StatData> fChannelMap;
 
   for(int islug=slug_begin;islug<=slug_end;islug++){
-    TString file_name = Form("%s/%sslug%d%s.root",
-			     input_path.Data(),
-			     input_prefix.Data(),islug,input_suffix.Data());
-    TFile* input_file = TFile::Open(file_name);
+    TString file_name = Form(input_format,islug);
+    TFile* input_file = TFile::Open(input_path+file_name);
     if(input_file==NULL){
-      cerr <<  " ++ " << file_name << " is not found and is skipped" << endl;
+      cerr <<  " ++ " << input_path+file_name << " is not found and is skipped" << endl;
       continue;
     }
-    
+    cout << input_file->GetName() << endl;
     TTree* mini_tree = (TTree*)input_file->Get(fTreeList[0]);
     if(mini_tree==NULL){
       cerr << " ++  Error: " << fTreeList[0]
@@ -145,7 +150,19 @@ int main(int argc, char** argv){
     for(int i=1;i<nTree;i++){
       mini_tree->AddFriend(fTreeList[i]);
     }
-
+    TFile* friend_file;
+    if(friend_format!=""){
+      cout << "Opening friend file:" 
+	   << Form(friend_format.Data(),islug) << endl;
+      friend_file = TFile::Open(Form((const char*)friend_format,islug));
+      Int_t nFriendTree = fFriendTreeList.size();
+      for(int i=0;i<nFriendTree;i++){
+	TTree *friend_tree = (TTree*)friend_file->Get(fFriendTreeList[i]);
+	if(friend_tree!=NULL)
+	  mini_tree->AddFriend(friend_tree);
+      }
+    }else
+      friend_file = 0;
     Int_t nEntries = mini_tree->GetEntries();
     Int_t run_number=0;
     Int_t mini_id=0;
@@ -167,7 +184,9 @@ int main(int argc, char** argv){
     TaRunInfo myRunInfo;
     SLUG_ARM myKey;
     TString detName = "";
+    TString rawAdet = "";
     TString bcmName =fConfig->GetParameter("normalizing_bcm");
+    // -- Start here
     for(int ievt=0;ievt<nEntries;ievt++){
       mini_tree->GetEntry(ievt);
       if(fRunInfoMap.find(run_number)==fRunInfoMap.end()){
@@ -192,6 +211,8 @@ int main(int argc, char** argv){
 	last_run_number = run_number;
 	if(maindet_switch.size()==3)
 	  detName  = maindet_switch[ myRunInfo.GetArmFlag() ];
+	if(rawAdet_switch.size()==3)
+	  rawAdet  = rawAdet_switch[ myRunInfo.GetArmFlag() ];
 	
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder *fStatBuilder = new TaStatBuilder();
@@ -208,6 +229,9 @@ int main(int argc, char** argv){
 	  if(kWeighted)
 	    fSlugStatBuilderMap[myKey]->UpdateWeightingError(fChannelMap[detName]);
 	  fSlugStatBuilderMap[myKey]->UpdateStatData("Adet",fChannelMap[detName]);
+	  if(rawAdet!="")  
+	    fSlugStatBuilderMap[myKey]->UpdateStatData("AdetRaw",fChannelMap[rawAdet]);
+
 	  if(dv_switch.size()==3){
 	    TString dvName  = dv_switch[ myRunInfo.GetArmFlag() ];
 	    for(int iiv=0;iiv<nIV;iiv++){
@@ -218,11 +242,10 @@ int main(int argc, char** argv){
 							 crtn);
 	    }
 	  }
-
 	}
 	if(bcmName!="")
 	  fSlugStatBuilderMap[myKey]->UpdateStatData("Aq",fChannelMap[bcmName]);
-	
+
 	auto iter_dev = fDeviceNameList.begin();
 	while(iter_dev!=fDeviceNameList.end()){
 	  if( myRunInfo.GetArmFlag()==1 ){
@@ -249,10 +272,11 @@ int main(int argc, char** argv){
 	cout << " ** run " << run_number << " is not a good run " << endl;
     } // end of minirun loop inside a slug
     input_file->Close();
+    if(friend_file!=0)
+      friend_file->Close();
   }// end of slug loop
-  TString output_filename = Form("%sprex_grand_average_%s%s.root",
-				 project_dir.Data(),output_tag.Data(),output_suffix.Data());
-  TFile *output_rf =  TFile::Open(output_filename,"RECREATE");
+  TString output_filename = Form(output_format, "grand_average","root");
+  TFile *output_rf =  TFile::Open(project_dir+output_filename,"RECREATE");
   TTree *fSlugTree = new TTree("slug","Slug Averages");
   Double_t fSlugID;
   Double_t fArmSlug;
@@ -266,7 +290,8 @@ int main(int argc, char** argv){
   TString last_wien_state="";
   vector<TString> wien_string;
   TaStatBuilder fSlugStatBuilder;
-  TaResult fSlugLog(project_dir+output_tag+"_average_by_slug"+output_suffix+".log");  
+  TaResult fSlugLog(project_dir+Form(output_format,
+				     "average_by_slug","root"));
   while(iter_slug!=fSlugStatBuilderMap.end()){
     fSlugID = ((*iter_slug).first).first;
     TString slug_label = Form("%.0f",fSlugID);
@@ -281,7 +306,9 @@ int main(int argc, char** argv){
     if(kSignCorrection)
       mySpin=fSign;
     
-    (*iter_slug).second->SetPlotFileName(plot_dir+output_tag+"_slug"+slug_label+output_suffix+".pdf");
+    (*iter_slug).second->SetPlotFileName(plot_dir+Form(output_format,
+						       ("slug"+slug_label).Data(),
+						       "pdf"));
     if(!kWeighted){
       (*iter_slug).second->PullFitAllChannels();
       (*iter_slug).second->FillTree(fSlugTree);
@@ -295,7 +322,8 @@ int main(int argc, char** argv){
   if(kWeighted)
     fSlugStatBuilder.RescaleErrorBar();
   fSlugStatBuilder.ReloadChi2NDF();
-  fSlugStatBuilder.PullFitAllChannels(project_dir+output_tag+"_slugs_pullfit"+output_suffix+".pdf");
+  fSlugStatBuilder.PullFitAllChannels(project_dir+Form(output_format,
+						       "slugs_pullfit","pdf"));
   fSlugStatBuilder.ReportLog(fSlugLog);
   // Builder Pitts and Wiens Statbuilders
   iter_slug = fSlugStatBuilderMap.begin();
@@ -326,8 +354,8 @@ int main(int argc, char** argv){
       }
       fPittsStatBuilderMap[pittsID]->SetLabel(slug_label);
       fPittsStatBuilderMap[pittsID]->UpdateStatBuilderByIHWP((*iter_slug).second,
-      							     IHWP_state,
-      							     mySpin);
+							     IHWP_state,
+							     mySpin);
     }
     if(Wien_state!=last_wien_state){
       wien_string.push_back(Wien_state);
@@ -341,8 +369,8 @@ int main(int argc, char** argv){
     }
     fWienStatBuilderMap[wienID]->SetLabel(slug_label);
     fWienStatBuilderMap[wienID]->UpdateStatBuilderByIHWP((*iter_slug).second,
-    							 IHWP_state,
-    							 mySpin);
+							 IHWP_state,
+							 mySpin);
     iter_slug++;
   }
   // END of building pitts and wien stats 
@@ -356,7 +384,9 @@ int main(int argc, char** argv){
   while(iter_pitts!=fPittsStatBuilderMap.end()){
     fPittsID = (*iter_pitts).first;
     fPittsStatBuilder.SetLabel(Form("%d",fPittsID));
-    (*iter_pitts).second->PullFitAllChannels(plot_dir+output_tag+Form("_Pitt%d",fPittsID)+output_suffix+".pdf");
+    TString pitt_label = Form("Pitt%d",fPittsID);
+    (*iter_pitts).second->PullFitAllChannels(plot_dir+Form(output_format,
+							   pitt_label.Data(),"pdf"));
     (*iter_pitts).second->PullFitAllChannelsByIHWP();
     fPittsStatBuilder.UpdateStatBuilder( (*iter_pitts).second );
     ((*iter_pitts).second)->FillTree(fPittsTree);
@@ -370,10 +400,11 @@ int main(int argc, char** argv){
   }
   
   // FIXME for NULL average 
-  fPittsStatBuilder.PullFitAllChannels(project_dir+output_tag+"_pitts_pullfit"+output_suffix+".pdf");
+  fPittsStatBuilder.PullFitAllChannels(project_dir+Form(output_format,"pitts_pullfit","pdf"));
+
   // fPittsNullStatBuilder.PullFitAllChannels(output_tag+"_pitts_null_pullfit"+output_suffix+".pdf");
 
-  TaResult fPittLog(project_dir+output_tag+"_average_by_pitt"+output_suffix+".log");
+  TaResult fPittLog(project_dir+Form(output_format,"average_by_pitt","log"));
   fPittsStatBuilder.ReportLog(fPittLog);
   // TaResult fPittLog_null(output_tag+"_null_by_pitt"+output_suffix+".log");
   // fPittsNullStatBuilder.ReportLog(fPittLog_null);
@@ -387,11 +418,10 @@ int main(int argc, char** argv){
   while(iter_wien!=fWienStatBuilderMap.end()){
     fWienID = (*iter_wien).first;
     fWienStatBuilder.SetLabel( wien_string[fWienID] );
-    (*iter_wien).second->PullFitAllChannels(Form("%s/%s_Wien%d_%s.pdf",
-						 plot_dir.Data(),output_tag.Data(),fWienID,
-						 wien_string[fWienID].Data()));
+    TString wien_label = Form("Wien%d_%s",fWienID,wien_string[fWienID].Data());
+    (*iter_wien).second->PullFitAllChannels(plot_dir+Form(output_format,
+							  wien_label.Data(),"pdf"));
     (*iter_wien).second->PullFitAllChannelsByIHWP();
-    
     fWienStatBuilder.UpdateStatBuilder((*iter_wien).second);
     (*iter_wien).second->FillTree(fWienTree);
     
@@ -401,8 +431,9 @@ int main(int argc, char** argv){
     fWienTree->Fill();
     iter_wien++;
   }
-  TaResult fWienLog(project_dir+output_tag+"_average_by_wien"+output_suffix+".log");
-  fWienStatBuilder.PullFitAllChannels(project_dir+output_tag+"_wien_pullfit"+output_suffix+".pdf");
+  TaResult fWienLog(project_dir+Form(output_format,"average_by_wien","log"));
+  fWienStatBuilder.PullFitAllChannels(project_dir+Form(output_format,
+						       "wien_pullfit","pdf"));
   fWienStatBuilder.ReportLogByIHWP(fWienLog);
   TTree *fGrandTree = new TTree("grand", "Grand Averages");
   fWienStatBuilder.FillTree(fGrandTree);
