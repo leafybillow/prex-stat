@@ -4,6 +4,7 @@ ClassImp(TaStatBuilder)
 TaStatBuilder::TaStatBuilder(){
   weighting_errorbar  = -1.0;
   kUseWeight = kFALSE;
+  kShortRunCut = kTRUE;
 }
 
 void TaStatBuilder::UpdateWeightingError(StatData input){
@@ -22,7 +23,7 @@ void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
   else
     nsamples2 = input.num_samples;
 
-  if(nsamples2>0 && nsamples2<=4500)
+  if(nsamples2>0 && nsamples2<=4500 && kShortRunCut)
     return;
   
   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
@@ -54,7 +55,7 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
   else
     nsamples2 = input.num_samples;
 
-  if(nsamples2>0 && nsamples2<=4500)
+  if(nsamples2>0 && nsamples2<=4500 && kShortRunCut)
     return;
   
   if(dest.error==0){
@@ -118,7 +119,7 @@ void TaStatBuilder::UpdateCentralMoment(StatData &dest,
   else
     nsamples2 = input.num_samples;
 
-  if(nsamples2>0 && nsamples2<=4500)
+  if(nsamples2>0 && nsamples2<=4500 && kShortRunCut)
     return;
   
   Double_t M2_2 = pow(rms2,2)*nsamples2;
@@ -196,7 +197,7 @@ void TaStatBuilder::UpdateStatBuilder(TaStatBuilder* finput ,Int_t sign){
   fStatBuilderArray.push_back(finput);
 }
 
-TaStatBuilder* TaStatBuilder::GetNullStatBuilder(){
+TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
   TaStatBuilder* fNullStatBuilder= new TaStatBuilder();
   if(fStatBuilderByIHWP["IN"]==NULL)
     fStatBuilderByIHWP["IN"] = new TaStatBuilder();
@@ -204,58 +205,62 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(){
     fStatBuilderByIHWP["OUT"] = new TaStatBuilder();
   TaStatBuilder* inStatBuilder = fStatBuilderByIHWP["IN"];
   TaStatBuilder* outStatBuilder = fStatBuilderByIHWP["OUT"];
-
-  // No ... I want to re-assemble in and out statbuilder here
-
-  if(inStatBuilder->fAverageMap["Adet"].error> outStatBuilder->fAverageMap["Adet"].error){
-
-    TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
-    vector<TaStatBuilder*> fStatBuilderArray = outStatBuilder->GetStatBuilderArray();
-    auto iter_sb = fStatBuilderArray.begin();
-    while(iter_sb!=fStatBuilderArray.end()){
-      if(fStatBuilderCandidate->fAverageMap["Adet"].error==0){
-	fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
-	iter_sb++;
-	continue;
-      }
-      Double_t dist_old = distance(fStatBuilderCandidate->fAverageMap["Adet"].error,
-				   inStatBuilder->fAverageMap["Adet"].error);
-      Double_t errorbar = 1.0/sqrt( 1.0/pow(fStatBuilderCandidate->fAverageMap["Adet"].error,2)+
-				    1.0/pow((*iter_sb)->fAverageMap["Adet"].error,2) );
-      Double_t dist_new = distance(errorbar,
-				   inStatBuilder->fAverageMap["Adet"].error);
-
-      if( dist_new < dist_old)
-	fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
-      iter_sb++;
-    }
-    fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"OUT");
-    fNullStatBuilder->UpdateStatBuilderByIHWP(inStatBuilder,"IN");
-    // Average stat data get updated at this point but will be refresh afterwards.
-    
-  }else{
-    TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
-    vector<TaStatBuilder*> fStatBuilderArray = inStatBuilder->GetStatBuilderArray();
-    auto iter_sb = fStatBuilderArray.begin();
-    while(iter_sb!=fStatBuilderArray.end()){
-      if(fStatBuilderCandidate->fAverageMap["Adet"].error==0){
-	fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
-	iter_sb++;
-	continue;
-      }
-      Double_t dist_old = distance(fStatBuilderCandidate->fAverageMap["Adet"].error,
-				   outStatBuilder->fAverageMap["Adet"].error);
-      Double_t errorbar = 1.0/sqrt( 1.0/pow(fStatBuilderCandidate->fAverageMap["Adet"].error,2)+
-				    1.0/pow((*iter_sb)->fAverageMap["Adet"].error,2) );
-      Double_t dist_new = distance(errorbar,
-				   outStatBuilder->fAverageMap["Adet"].error);
-
-      if( dist_new < dist_old)
-	fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
-      iter_sb++;
-    }
-    fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"IN");
+  if(!kBalanced){
     fNullStatBuilder->UpdateStatBuilderByIHWP(outStatBuilder,"OUT");
+    fNullStatBuilder->UpdateStatBuilderByIHWP(inStatBuilder,"IN");
+  }else{
+    // No ... I want to re-assemble in and out statbuilder here
+    if(inStatBuilder->fAverageMap["Adet"].error> outStatBuilder->fAverageMap["Adet"].error){
+
+      TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
+      vector<TaStatBuilder*> fStatBuilderArray = outStatBuilder->GetStatBuilderArray();
+      auto iter_sb = fStatBuilderArray.begin();
+      while(iter_sb!=fStatBuilderArray.end()){
+	if(fStatBuilderCandidate->fAverageMap["Adet"].error==0){
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	  iter_sb++;
+	  continue;
+	}
+	Double_t dist_old = distance(fStatBuilderCandidate->fAverageMap["Adet"].error,
+				     inStatBuilder->fAverageMap["Adet"].error);
+	Double_t errorbar = 1.0/sqrt( 1.0/pow(fStatBuilderCandidate->fAverageMap["Adet"].error,2)+
+				      1.0/pow((*iter_sb)->fAverageMap["Adet"].error,2) );
+	Double_t dist_new = distance(errorbar,
+				     inStatBuilder->fAverageMap["Adet"].error);
+
+	if( dist_new < dist_old)
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	iter_sb++;
+      }
+      fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"OUT");
+      fNullStatBuilder->UpdateStatBuilderByIHWP(inStatBuilder,"IN");
+      // Average stat data get updated at this point but will be refresh afterwards.
+    
+    }else{
+      TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
+      vector<TaStatBuilder*> fStatBuilderArray = inStatBuilder->GetStatBuilderArray();
+      auto iter_sb = fStatBuilderArray.begin();
+      while(iter_sb!=fStatBuilderArray.end()){
+	if(fStatBuilderCandidate->fAverageMap["Adet"].error==0){
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	  iter_sb++;
+	  continue;
+	}
+	Double_t dist_old = distance(fStatBuilderCandidate->fAverageMap["Adet"].error,
+				     outStatBuilder->fAverageMap["Adet"].error);
+	Double_t errorbar = 1.0/sqrt( 1.0/pow(fStatBuilderCandidate->fAverageMap["Adet"].error,2)+
+				      1.0/pow((*iter_sb)->fAverageMap["Adet"].error,2) );
+	Double_t dist_new = distance(errorbar,
+				     outStatBuilder->fAverageMap["Adet"].error);
+
+	if( dist_new < dist_old)
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	iter_sb++;
+      }
+      fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"IN");
+      fNullStatBuilder->UpdateStatBuilderByIHWP(outStatBuilder,"OUT");
+    }
+
   }
   
   

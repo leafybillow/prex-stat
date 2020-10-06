@@ -81,7 +81,7 @@ public:
   void UpdateStatBuilderByIHWP(TaStatBuilder*,TString,Int_t sign=1);
   void Process();
   void CalcAverages();
-  TaStatBuilder* GetNullStatBuilder();
+  TaStatBuilder* GetNullStatBuilder(Bool_t kBalanced=kTRUE);
   Bool_t HasStatBuilderByIHWP(){
     if(fStatBuilderByIHWP.find("IN")!=fStatBuilderByIHWP.end() &&
        fStatBuilderByIHWP.find("OUT")!=fStatBuilderByIHWP.end())
@@ -95,7 +95,7 @@ public:
   
   void LoadRunInfo(TaRunInfo* aRunInfo);
   void UpdateWeightingError(StatData input);
-  
+  void DisableShortRunCut(){ kShortRunCut=kFALSE;};
   void UpdateStatData(StatData &tgt,StatData input,Int_t sign=1);
   void UpdateStatData(TString chname,StatData input,Int_t sign=1);
   
@@ -153,6 +153,7 @@ public:
 private:
   Double_t weighting_errorbar;
   Bool_t kUseWeight;
+  Bool_t kShortRunCut;
   Int_t fSign;
   TString plot_filename;
   TString fLabel_tmp;
