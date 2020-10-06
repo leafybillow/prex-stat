@@ -64,10 +64,6 @@ int main(int argc, char** argv){
   Bool_t kWeighted = kFALSE;
   if(maindet_weighted=="true")
     kWeighted = kTRUE;
-  
-  Bool_t kShortRunCut=kTRUE; // by default, ignore short miniruns (<4500 patterns)
-  if(fConfig->GetParameter("short_run_cut")=="false")
-    kShortRunCut = kFALSE;
 
   Int_t slug_begin = (fConfig->GetParameter("slug_begin")).Atoi();
   Int_t slug_end = (fConfig->GetParameter("slug_end")).Atoi();
@@ -221,8 +217,6 @@ int main(int argc, char** argv){
 	
 	if(fSlugStatBuilderMap.find(myKey)==fSlugStatBuilderMap.end()){
 	  TaStatBuilder *fStatBuilder = new TaStatBuilder();
-	  if(!kShortRunCut)
-	    fStatBuilder->DisableShortRunCut();
 	  fSlugStatBuilderMap.insert(make_pair(myKey,fStatBuilder));
 	  fSlugInfoMap[myKey] = make_pair(myRunInfo.GetIHWPStatus(),
 					  myRunInfo.GetWienMode());
@@ -301,8 +295,6 @@ int main(int argc, char** argv){
   TString last_wien_state="";
   vector<TString> wien_string;
   TaStatBuilder fSlugStatBuilder;
-  if(!kShortRunCut)
-    fSlugStatBuilder.DisableShortRunCut();
   TaResult fSlugLog(project_dir+Form(output_format,
 				     "average_by_slug","log"));
   while(iter_slug!=fSlugStatBuilderMap.end()){
@@ -370,8 +362,6 @@ int main(int argc, char** argv){
     if(pittsID!=-1){
       if(fPittsStatBuilderMap.find(pittsID)==fPittsStatBuilderMap.end()){
 	TaStatBuilder *fStatBuilder  = new TaStatBuilder();
-	if(!kShortRunCut)
-	  fStatBuilder->DisableShortRunCut();
 	fPittsStatBuilderMap[pittsID] = fStatBuilder;
       }
       fPittsStatBuilderMap[pittsID]->SetLabel(slug_label);
@@ -380,8 +370,6 @@ int main(int argc, char** argv){
 							     mySpin);
       if(fPittsNullStatBuilderMap.find(pittsID)==fPittsNullStatBuilderMap.end()){
 	TaStatBuilder *fStatBuilder  = new TaStatBuilder();
-	if(!kShortRunCut)
-	  fStatBuilder->DisableShortRunCut();
 	fPittsNullStatBuilderMap[pittsID] = fStatBuilder;
       }
       fPittsNullStatBuilderMap[pittsID]->SetLabel(slug_label);
@@ -397,8 +385,6 @@ int main(int argc, char** argv){
     cout << " -- Fill Wien StatBuilder with slug " << slug_label << endl;
     if(fWienStatBuilderMap.find(wienID)==fWienStatBuilderMap.end()){
       TaStatBuilder *fStatBuilder = new TaStatBuilder();
-      if(!kShortRunCut)
-	fStatBuilder->DisableShortRunCut();
       fWienStatBuilderMap[wienID] = fStatBuilder;
     }
     fWienStatBuilderMap[wienID]->SetLabel(slug_label);
@@ -408,8 +394,6 @@ int main(int argc, char** argv){
 
     if(fWienNullStatBuilderMap.find(wienID)==fWienNullStatBuilderMap.end()){
       TaStatBuilder *fStatBuilder = new TaStatBuilder();
-      if(!kShortRunCut)
-	fStatBuilder->DisableShortRunCut();
       fWienNullStatBuilderMap[wienID] = fStatBuilder;
     }
     fWienNullStatBuilderMap[wienID]->SetLabel(slug_label);
@@ -420,11 +404,7 @@ int main(int argc, char** argv){
   }
   // END of building pitts and wien stats 
   TaStatBuilder fPittsStatBuilder;
-  if(!kShortRunCut)
-    fPittsStatBuilder.DisableShortRunCut();
   TaStatBuilder fPittsNullStatBuilder;
-  if(!kShortRunCut)
-    fPittsNullStatBuilder.DisableShortRunCut();
 
   TTree *fPittsTree = new TTree("pitt","Pitts Averages");
   Int_t fPittsID;
@@ -457,11 +437,7 @@ int main(int argc, char** argv){
   fPittsNullStatBuilder.ReportLogByIHWP(fPittLog_null);
   
   TaStatBuilder fWienStatBuilder;
-  if(!kShortRunCut)
-    fWienStatBuilder.DisableShortRunCut();
   TaStatBuilder fWienNullStatBuilder;
-  if(!kShortRunCut)
-    fWienNullStatBuilder.DisableShortRunCut();
 
   TTree *fWienTree = new TTree("wien","Wien Averages");
   Int_t fWienID;

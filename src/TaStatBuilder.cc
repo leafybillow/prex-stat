@@ -23,9 +23,6 @@ void TaStatBuilder::UpdateStatData(TString chname,StatData input, Int_t sign){
   else
     nsamples2 = input.num_samples;
 
-  if(nsamples2>0 && nsamples2<=4500 && kShortRunCut)
-    return;
-  
   if(fStatDataArrayMap.find(chname)==fStatDataArrayMap.end())
     fDeviceNameList.push_back(chname);
   
@@ -54,9 +51,6 @@ void TaStatBuilder::UpdateStatData(StatData &dest,
     nsamples2= pow(rms2/error2,2);
   else
     nsamples2 = input.num_samples;
-
-  if(nsamples2>0 && nsamples2<=4500 && kShortRunCut)
-    return;
   
   if(dest.error==0){
     dest.mean = sign*input.mean;
@@ -119,9 +113,6 @@ void TaStatBuilder::UpdateCentralMoment(StatData &dest,
   else
     nsamples2 = input.num_samples;
 
-  if(nsamples2>0 && nsamples2<=4500 && kShortRunCut)
-    return;
-  
   Double_t M2_2 = pow(rms2,2)*nsamples2;
 
   if(nsamples2!=0){
@@ -142,8 +133,13 @@ void TaStatBuilder::UpdateCentralMoment(StatData &dest,
 StatData TaStatBuilder::GetNullAverage(StatData in1, StatData in2){
   StatData fRetStatData;
   // cout << in1.sign << " \t " << in2.sign << endl;
-  fRetStatData.mean = (in1.mean + in2.mean)/2.0;
-  fRetStatData.error = sqrt(in1.error*in1.error+in2.error*in2.error)/2.0;
+  if(in1.error>0 && in2.error>0){
+    fRetStatData.mean = (in1.mean + in2.mean)/2.0;
+    fRetStatData.error = sqrt(in1.error*in1.error+in2.error*in2.error)/2.0;
+  }else{
+    fRetStatData.mean=0;
+    fRetStatData.error=-1;
+  }
   return fRetStatData;
 }
 
@@ -208,10 +204,14 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
   if(!kBalanced){
     fNullStatBuilder->UpdateStatBuilderByIHWP(outStatBuilder,"OUT");
     fNullStatBuilder->UpdateStatBuilderByIHWP(inStatBuilder,"IN");
+    cout << "outStatBuilder->fAverageMap[\"Adet\"].error:" 
+	 << outStatBuilder->fAverageMap["Adet"].error << endl;
+    cout << "inStatBuilder->fAverageMap[\"Adet\"].error: " 
+	 << inStatBuilder->fAverageMap["Adet"].error << endl;
+
   }else{
     // No ... I want to re-assemble in and out statbuilder here
     if(inStatBuilder->fAverageMap["Adet"].error> outStatBuilder->fAverageMap["Adet"].error){
-
       TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
       vector<TaStatBuilder*> fStatBuilderArray = outStatBuilder->GetStatBuilderArray();
       auto iter_sb = fStatBuilderArray.begin();
@@ -235,7 +235,10 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
       fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"OUT");
       fNullStatBuilder->UpdateStatBuilderByIHWP(inStatBuilder,"IN");
       // Average stat data get updated at this point but will be refresh afterwards.
-    
+      cout << "fStatBuilderCandidate->fAverageMap[\"Adet\"].error:" 
+	   << fStatBuilderCandidate->fAverageMap["Adet"].error << endl;
+      cout << "inStatBuilder->fAverageMap[\"Adet\"].error: " 
+	   << inStatBuilder->fAverageMap["Adet"].error << endl;
     }else{
       TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
       vector<TaStatBuilder*> fStatBuilderArray = inStatBuilder->GetStatBuilderArray();
@@ -259,11 +262,12 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
       }
       fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"IN");
       fNullStatBuilder->UpdateStatBuilderByIHWP(outStatBuilder,"OUT");
+      cout << "fStatBuilderCandidate->fAverageMap[\"Adet\"].error:" 
+	   << fStatBuilderCandidate->fAverageMap["Adet"].error << endl;
+      cout << "outStatBuilder->fAverageMap[\"Adet\"].error:" 
+	   << outStatBuilder->fAverageMap["Adet"].error << endl;
     }
-
   }
-  
-  
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
     if(find(fNullStatBuilder->fDeviceNameList.begin(),
