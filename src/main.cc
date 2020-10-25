@@ -252,7 +252,10 @@ int main(int argc, char** argv){
 	  if( myRunInfo.GetArmFlag()==1 ){
 	    if((*iter_dev).Contains("l")
 	       || (*iter_dev).Contains("s_avg")
-	       || (*iter_dev).Contains("s_dd") ) {
+	       || (*iter_dev).Contains("s_dd")
+	       || (*iter_dev).Contains("_l_dd")
+	       || (*iter_dev).Contains("lr_dd_dd")
+	       || (*iter_dev).Contains("lr_avg_dd") ) {
 	      iter_dev++;
 	      continue;
 	    }
@@ -261,7 +264,10 @@ int main(int argc, char** argv){
 	    if((*iter_dev).Contains("sr")
 	       || (*iter_dev).Contains("tr")
 	       || (*iter_dev).Contains("s_avg")
-	       || (*iter_dev).Contains("s_dd") ) {
+	       || (*iter_dev).Contains("s_dd")
+	       || (*iter_dev).Contains("_r_dd")
+	       || (*iter_dev).Contains("lr_dd_dd")
+	       || (*iter_dev).Contains("lr_avg_dd") ) {
 	      iter_dev++;
 	      continue;
 	    }
