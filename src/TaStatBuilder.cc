@@ -134,7 +134,14 @@ StatData TaStatBuilder::GetNullAverage(StatData in1, StatData in2){
   StatData fRetStatData;
   // cout << in1.sign << " \t " << in2.sign << endl;
   if(in1.error>0 && in2.error>0){
-    fRetStatData.mean = (in1.mean + in2.mean)/2.0;
+    if(in1.sign>0 && in2.sign<0)
+      fRetStatData.mean = (in1.mean + in2.mean)/2.0;
+    else if (in1.sign<0 && in2.sign>0)
+      fRetStatData.mean = -(in1.mean + in2.mean)/2.0;
+    else if (in1.sign * in2.sign>0){
+      fRetStatData.mean = 0.0;
+      cerr << " this is weird ....... " << endl; 
+    }
     fRetStatData.error = sqrt(in1.error*in1.error+in2.error*in2.error)/2.0;
   }else{
     fRetStatData.mean=0;
@@ -275,6 +282,7 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
 	    *iter_dev) == fNullStatBuilder->fDeviceNameList.end())
       fNullStatBuilder->fDeviceNameList.push_back(*iter_dev);
     // FIXME : should be aborted when channel map mismatched
+    // FIXME: this is a quickfix
     fNullStatBuilder->fAverageMap[*iter_dev] = GetNullAverage(fNullStatBuilder->GetStatBuilderByIHWP("IN")->fAverageMap[*iter_dev],fNullStatBuilder->GetStatBuilderByIHWP("OUT")->fAverageMap[*iter_dev]);
 
     iter_dev++;
@@ -534,7 +542,8 @@ Double_t TaStatBuilder::LoadScaleFactor(TString device_name,
     unit = "(ppb)";
     rms_unit = "(ppm)";
   }
-  if( device_name.Contains("diff_bpm")){
+  if( device_name.Contains("diff_bpm") ||
+      (device_name.Contains("bpm") && device_name.Contains("dd")) ){
     rescale = 1e6;
     unit = "(nm)";
     rms_unit = "(um)";
