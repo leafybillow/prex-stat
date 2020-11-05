@@ -72,6 +72,18 @@ int main(int argc, char** argv){
   if(slug_end ==0 )
     slug_end = 94;
   
+  vector<TString> run_cut_str = fConfig->GetParameterList("run_cut");
+  Int_t nrun_cut = run_cut_str.size();
+  vector<Int_t> fRun_cut;
+  for(int irun=0;irun<nrun_cut;irun++)
+    fRun_cut.push_back( (run_cut_str[irun]).Atoi() );
+
+  vector<TString> slug_cut_str = fConfig->GetParameterList("slug_cut");
+  Int_t nslug_cut = slug_cut_str.size();
+  vector<Int_t> fSlug_cut;
+  for(int islug=0;islug<nslug_cut;islug++)
+    fSlug_cut.push_back( (slug_cut_str[islug]).Atoi() );
+
   vector<TString> fDeviceNameList;
   if( (fConfig->GetParameter("device_list"))!="") {
     fDeviceNameList = fConfig->GetParameterList("device_list");
@@ -134,6 +146,13 @@ int main(int argc, char** argv){
   map<TString,StatData> fChannelMap;
 
   for(int islug=slug_begin;islug<=slug_end;islug++){
+    if(find(fSlug_cut.begin(),fSlug_cut.end(),islug)!=fSlug_cut.end() 
+       && fSlug_cut.size()!=0){
+      cout << "-- "
+	   << islug << " is specified in slug_cut and will be skipped "  << endl;
+      continue;
+    }
+
     TString file_name = Form(input_format,islug);
     TFile* input_file = TFile::Open(input_path+file_name);
     if(input_file==NULL){
@@ -192,10 +211,15 @@ int main(int argc, char** argv){
       mini_tree->GetEntry(ievt);
       if(fRunInfoMap.find(run_number)==fRunInfoMap.end()){
 	cerr << "-- run info not found for run  "
-	     << run_number << " and will skip "  << endl;
+	     << run_number << " and will be skipped "  << endl;
 	continue;
       }
-      
+      if(find(fRun_cut.begin(),fRun_cut.end(),run_number)!=fRun_cut.end() 
+	 && fRun_cut.size()!=0){
+	cout << "-- "
+	     << run_number << " is specified in run_cut and will be skipped "  << endl;
+	continue;
+      }
       // Scale Correction StatData from ivs
       for(int idv=0;idv<nDV;idv++){
 	for(int iiv=0;iiv<nIV;iiv++){
