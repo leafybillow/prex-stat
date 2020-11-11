@@ -130,26 +130,6 @@ void TaStatBuilder::UpdateCentralMoment(StatData &dest,
   }
 }
 
-StatData TaStatBuilder::GetNullAverage(StatData in1, StatData in2){
-  StatData fRetStatData;
-  // cout << in1.sign << " \t " << in2.sign << endl;
-  if(in1.error>0 && in2.error>0){
-    if(in1.sign>0 && in2.sign<0)
-      fRetStatData.mean = (in1.mean + in2.mean)/2.0;
-    else if (in1.sign<0 && in2.sign>0)
-      fRetStatData.mean = -(in1.mean + in2.mean)/2.0;
-    else if (in1.sign * in2.sign>0){
-      fRetStatData.mean = 0.0;
-      cerr << " this is weird ....... " << endl; 
-    }
-    fRetStatData.error = sqrt(in1.error*in1.error+in2.error*in2.error)/2.0;
-  }else{
-    fRetStatData.mean=0;
-    fRetStatData.error=-1;
-  }
-  return fRetStatData;
-}
-
 void TaStatBuilder::FillTree(TTree *fTree, TString prefix){
 
   TString leaflist = "mean/D:error:rms:nsamp:chi2:ndf";
@@ -175,6 +155,7 @@ void TaStatBuilder::UpdateStatBuilderByIHWP(TaStatBuilder* finput,
   if( fStatBuilderByIHWP.find(ihwp)==fStatBuilderByIHWP.end())
     fStatBuilderByIHWP[ihwp] = new TaStatBuilder();
   fStatBuilderByIHWP[ihwp]->UpdateStatBuilder(finput,sign);
+  fStatBuilderByIHWP[ihwp]->SetStatBuilderSign(sign); // FIXME; maybe ,think about a better fixme
   UpdateStatBuilder(finput,sign);
 }
 
@@ -220,11 +201,14 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
     // No ... I want to re-assemble in and out statbuilder here
     if(inStatBuilder->fAverageMap["Adet"].error> outStatBuilder->fAverageMap["Adet"].error){
       TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
-      vector<TaStatBuilder*> fStatBuilderArray = outStatBuilder->GetStatBuilderArray();
-      auto iter_sb = fStatBuilderArray.begin();
-      while(iter_sb!=fStatBuilderArray.end()){
+      vector<TaStatBuilder*> fStatBuilderArray_hwp = outStatBuilder->GetStatBuilderArray();
+      // And elements of Statbuilder array are not sign corrected
+      auto iter_sb = fStatBuilderArray_hwp.begin();
+      while(iter_sb!=fStatBuilderArray_hwp.end()){
 	if(fStatBuilderCandidate->fAverageMap["Adet"].error==0){
-	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	  cerr << " Zero Error bar in Adet " << endl;
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb,
+						   outStatBuilder->GetStatBuilderSign());
 	  iter_sb++;
 	  continue;
 	}
@@ -236,11 +220,13 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
 				     inStatBuilder->fAverageMap["Adet"].error);
 
 	if( dist_new < dist_old)
-	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb,
+						   outStatBuilder->GetStatBuilderSign());
 	iter_sb++;
       }
       fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"OUT");
       fNullStatBuilder->UpdateStatBuilderByIHWP(inStatBuilder,"IN");
+
       // Average stat data get updated at this point but will be refresh afterwards.
       cout << "fStatBuilderCandidate->fAverageMap[\"Adet\"].error:" 
 	   << fStatBuilderCandidate->fAverageMap["Adet"].error << endl;
@@ -248,11 +234,13 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
 	   << inStatBuilder->fAverageMap["Adet"].error << endl;
     }else{
       TaStatBuilder* fStatBuilderCandidate = new TaStatBuilder();
-      vector<TaStatBuilder*> fStatBuilderArray = inStatBuilder->GetStatBuilderArray();
-      auto iter_sb = fStatBuilderArray.begin();
-      while(iter_sb!=fStatBuilderArray.end()){
+      vector<TaStatBuilder*> fStatBuilderArray_hwp = inStatBuilder->GetStatBuilderArray();
+      auto iter_sb = fStatBuilderArray_hwp.begin();
+      while(iter_sb!=fStatBuilderArray_hwp.end()){
 	if(fStatBuilderCandidate->fAverageMap["Adet"].error==0){
-	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	  cerr << " Zero Error bar in Adet " << endl;
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb,
+						   inStatBuilder->GetStatBuilderSign());
 	  iter_sb++;
 	  continue;
 	}
@@ -264,7 +252,8 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
 				     outStatBuilder->fAverageMap["Adet"].error);
 
 	if( dist_new < dist_old)
-	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb);
+	  fStatBuilderCandidate->UpdateStatBuilder(*iter_sb,
+						   inStatBuilder->GetStatBuilderSign());
 	iter_sb++;
       }
       fNullStatBuilder->UpdateStatBuilderByIHWP(fStatBuilderCandidate,"IN");
@@ -275,6 +264,14 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
 	   << outStatBuilder->fAverageMap["Adet"].error << endl;
     }
   }
+  Int_t sign_flip =1;
+  // if(inStatBuilder->GetStatBuilderSign()>0 && outStatBuilder->GetStatBuilderSign()<0)
+  //   sign_flip = 1;
+  // else if(inStatBuilder->GetStatBuilderSign()<0 && outStatBuilder->GetStatBuilderSign()>0)
+  //   sign_flip = -1;
+  // else{
+  //   cerr <<  " this is weird ...... " << endl;
+  // }
   auto iter_dev = fDeviceNameList.begin();
   while(iter_dev!=fDeviceNameList.end()){
     if(find(fNullStatBuilder->fDeviceNameList.begin(),
@@ -283,12 +280,27 @@ TaStatBuilder* TaStatBuilder::GetNullStatBuilder(Bool_t kBalanced){
       fNullStatBuilder->fDeviceNameList.push_back(*iter_dev);
     // FIXME : should be aborted when channel map mismatched
     // FIXME: this is a quickfix
-    fNullStatBuilder->fAverageMap[*iter_dev] = GetNullAverage(fNullStatBuilder->GetStatBuilderByIHWP("IN")->fAverageMap[*iter_dev],fNullStatBuilder->GetStatBuilderByIHWP("OUT")->fAverageMap[*iter_dev]);
+    fNullStatBuilder->fAverageMap[*iter_dev] = GetNullAverage(fNullStatBuilder->GetStatBuilderByIHWP("IN")->fAverageMap[*iter_dev],
+							      fNullStatBuilder->GetStatBuilderByIHWP("OUT")->fAverageMap[*iter_dev],
+							      sign_flip);
 
     iter_dev++;
   }
   return fNullStatBuilder;
 }
+
+StatData TaStatBuilder::GetNullAverage(StatData in1, StatData in2, Int_t sign_flip){
+  StatData fRetStatData;
+  if(in1.error>0 && in2.error>0){
+    fRetStatData.mean = sign_flip*(in1.mean - in2.mean)/2.0; 
+    fRetStatData.error = sqrt(in1.error*in1.error+in2.error*in2.error)/2.0;
+  }else{
+    fRetStatData.mean=0;
+    fRetStatData.error=-1;
+  }
+  return fRetStatData;
+}
+
 
 void TaStatBuilder::ProcessNullAsym(TTree *fTree){
   TaStatBuilder* fNullStatBuilder = GetNullStatBuilder();

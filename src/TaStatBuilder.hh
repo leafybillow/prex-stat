@@ -102,7 +102,7 @@ public:
   void UpdateCentralMoment(StatData &tgt,StatData input,Int_t sign=1);
   // void UpdateCentralMoment(TString chname,StatData input,Int_t sign=1);
   
-  StatData GetNullAverage(StatData in1,StatData in2);
+  StatData GetNullAverage(StatData in1,StatData in2, Int_t sign_flip=1);
 
   void SetPlotFileName(TString filename){
     plot_filename = filename;
@@ -145,6 +145,13 @@ public:
   void RescaleErrorBar();
   void RescaleErrorBarBy(TaStatBuilder*);
   void ReloadChi2NDF();
+  void SetStatBuilderSign(Int_t sign){
+    fSign = sign; 
+  };
+  int GetStatBuilderSign(){
+    return fSign; 
+  };
+
   map<TString,StatData> fAverageMap;  
   vector<TString> fDeviceNameList;
   map<TString, StatDataArray> fStatDataArrayMap;

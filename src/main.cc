@@ -404,7 +404,7 @@ int main(int argc, char** argv){
       }
       fPittsNullStatBuilderMap[pittsID]->SetLabel(slug_label);
       fPittsNullStatBuilderMap[pittsID]->UpdateStatBuilderByIHWP((*iter_slug).second,
-								 IHWP_state,1);  // no sign correction
+								 IHWP_state,mySpin);  //**
 
     }
     if(Wien_state!=last_wien_state){
@@ -428,7 +428,7 @@ int main(int argc, char** argv){
     }
     fWienNullStatBuilderMap[wienID]->SetLabel(slug_label);
     fWienNullStatBuilderMap[wienID]->UpdateStatBuilderByIHWP((*iter_slug).second,
-							    IHWP_state,1); // no signed
+							    IHWP_state,mySpin);
 
     iter_slug++;
   }
